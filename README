@@ -1,7 +1,11 @@
 
 # Q
-## gradle下载慢
-修改 `项目根目录\gradle\wrapper\gradle-wrapper.properties` 内的`distributionUrl`为国内源
+## gradle bin和src下载慢
+修改 `项目根目录\gradle\wrapper\gradle-wrapper.properties` 内的`distributionUrl`为国内源，
+使用`distributionUrl=https\://mirrors.cloud.tencent.com/gradle/gradle-8.9-all.zip`，注意后缀为`all`
 
 ## 代码更新后使用华为设备，程序未更新
 在Run处的位置EditConfigruations, 勾选Always install with package manager。
+
+## maven下载包很慢
+修改`settings.gradle.kts`，使用国内镜像
