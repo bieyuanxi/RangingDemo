@@ -1,0 +1,7 @@
+
+# Q
+## gradle下载慢
+修改 `项目根目录\gradle\wrapper\gradle-wrapper.properties` 内的`distributionUrl`为国内源
+
+## 代码更新后使用华为设备，程序未更新
+在Run处的位置EditConfigruations, 勾选Always install with package manager。
