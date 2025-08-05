@@ -2,6 +2,7 @@ package com.example.rangingdemo
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -170,10 +172,18 @@ fun LaunchScreen() {
 // 应用主内容
 @Composable
 fun MainContent() {
+    val context = LocalContext.current
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text("应用主界面 - 所有权限已授予")
+        Button(
+            onClick = {
+                val intent = Intent(context, DebugActivity::class.java)
+                context.startActivity(intent)
+            }
+        ) {
+            Text("Debug")
+        }
     }
 }
