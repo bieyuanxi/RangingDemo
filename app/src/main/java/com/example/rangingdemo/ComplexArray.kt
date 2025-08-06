@@ -7,7 +7,7 @@ package com.example.rangingdemo
  */
 class ComplexArray(val size: Int) {
     //两倍空间交替存储real部分和imag部分
-    private val inner = FloatArray(size shl 1)
+    val inner = FloatArray(size shl 1)
 
     // 设置第index个复数
     operator fun set(index: Int, complex: Complex) {
