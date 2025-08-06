@@ -1,5 +1,7 @@
 package com.example.rangingdemo
 
+import kotlin.math.sin
+
 // 生成指定频率的立体声音频
 fun generateStereoAudio(
     durationMs: Int,
@@ -21,9 +23,9 @@ fun generateStereoAudio(
 
     for (i in 0 until frameCount) {
         // 左声道采样（偶数索引）
-        pcmData[i * 2] = Math.sin(2 * Math.PI * leftFreq * time).toFloat()
+        pcmData[i * 2] = sin(2 * Math.PI * leftFreq * time).toFloat()
         // 右声道采样（奇数索引）
-        pcmData[i * 2 + 1] = Math.sin(2 * Math.PI * rightFreq * time).toFloat()
+        pcmData[i * 2 + 1] = sin(2 * Math.PI * rightFreq * time).toFloat()
 
         time += timeStep
     }
