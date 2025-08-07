@@ -5,18 +5,18 @@ package com.example.rangingdemo
  *
  * 内存布局：[[real0, imag0, real1, imag1, ...]]
  */
-class ComplexArray(val size: Int) {
+class Complex32Array(val size: Int) {
     //两倍空间交替存储real部分和imag部分
     val inner = FloatArray(size shl 1)
 
     // 设置第index个复数
-    operator fun set(index: Int, complex: Complex) {
+    operator fun set(index: Int, complex: Complex32) {
         set(index, complex.real, complex.imag)
     }
 
     // 获取第index个复数
-    operator fun get(index: Int): Complex {
-        return Complex(inner[index shl 1], inner[(index shl 1) + 1])
+    operator fun get(index: Int): Complex32 {
+        return Complex32(inner[index shl 1], inner[(index shl 1) + 1])
     }
 
     fun set(index: Int, real: Float, imag: Float) {

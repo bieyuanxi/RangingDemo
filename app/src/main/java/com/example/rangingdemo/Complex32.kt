@@ -8,7 +8,7 @@ package com.example.rangingdemo
  * 由于使用long进行包装，因此存在0f和-0f导致long值不等的问题，判断相等时应使用eq()方法
  * */
 @JvmInline
-value class Complex(private val inner: Long) {
+value class Complex32(private val inner: Long) {
     constructor(real: Float, imag: Float) : this(
         // 将两个Float的二进制表示打包到Long中
         (real.toRawBits().toLong() shl 32) or (imag.toRawBits().toLong() and 0xFFFFFFFFL)
@@ -21,24 +21,32 @@ value class Complex(private val inner: Long) {
         get() = Float.fromBits(inner.toInt())
 
     // 复数加法
-    operator fun plus(other: Complex): Complex {
-        return Complex(real + other.real, imag + other.imag)
+    operator fun plus(other: Complex32): Complex32 {
+        return Complex32(real + other.real, imag + other.imag)
     }
 
     // 复数减法
-    operator fun minus(other: Complex): Complex {
-        return Complex(real - other.real, imag - other.imag)
+    operator fun minus(other: Complex32): Complex32 {
+        return Complex32(real - other.real, imag - other.imag)
     }
 
     // 复数乘法
-    operator fun times(other: Complex): Complex {
+    operator fun times(other: Complex32): Complex32 {
         val newReal = real * other.real - imag * other.imag
         val newImag = real * other.imag + imag * other.real
-        return Complex(newReal, newImag)
+        return Complex32(newReal, newImag)
+    }
+
+    fun abs(): Float {
+        return kotlin.math.sqrt(real * real + imag * imag)
+    }
+
+    fun conjugate(): Complex32 {
+        return Complex32(real, -imag)
     }
 
     // 为了解决0f和-0f值相同但是编码不同导致Complex不相等的问题
-    fun eq(other: Complex): Boolean {
+    fun eq(other: Complex32): Boolean {
         return real == other.real && imag == other.imag
     }
 

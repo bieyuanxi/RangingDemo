@@ -5,7 +5,7 @@ import com.sun.jna.Memory
 object RustFFTWrapper {
     private val lib = LibRustFFT.INSTANCE
 
-    private fun process(input: ComplexArray, inverse: Boolean): ComplexArray {
+    private fun process(input: Complex32Array, inverse: Boolean): Complex32Array {
         val inputSize = input.size
         val inputPtr = Memory(inputSize * 8L) // 每个Complex占8字节（2个float）
         inputPtr.write(0, input.inner, 0, input.inner.size)
@@ -14,7 +14,7 @@ object RustFFTWrapper {
 
         lib.fft_forward(inputPtr, outputPtr, inputSize, inverse)
 
-        val output = ComplexArray(inputSize)
+        val output = Complex32Array(inputSize)
         outputPtr.read(0, output.inner, 0, output.inner.size)
 
         // Free the native memory and set peer to zero
@@ -24,11 +24,11 @@ object RustFFTWrapper {
         return output
     }
 
-    fun fft(input: ComplexArray): ComplexArray {
+    fun fft(input: Complex32Array): Complex32Array {
         return process(input, false)
     }
 
-    fun ifft(input: ComplexArray): ComplexArray {
+    fun ifft(input: Complex32Array): Complex32Array {
         return process(input, true)
     }
 }
