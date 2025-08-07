@@ -25,23 +25,3 @@ class Complex32Array(val size: Int) {
     }
 }
 
-//class ComplexArray(size: Int) {
-//    private val inner = FloatArray(2 * size)
-//
-//    // 实部访问器
-//    val real = Accessor { index -> 2 * index }
-//
-//    // 虚部访问器
-//    val imag = Accessor { index -> 2 * index + 1 }
-//
-//    // 自定义访问器类，仅提供 get 和 set
-//    inner class Accessor(private val indexMapper: (Int) -> Int) {
-//        operator fun get(index: Int): Float {
-//            return inner[indexMapper(index)]
-//        }
-//
-//        operator fun set(index: Int, value: Float) {
-//            inner[indexMapper(index)] = value
-//        }
-//    }
-//}
