@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.lib
 
 import com.sun.jna.Library
 import com.sun.jna.Native

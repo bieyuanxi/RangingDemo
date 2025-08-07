@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.lib
 
 import com.example.rangingdemo.complex.Complex32Array
 import com.sun.jna.Memory
