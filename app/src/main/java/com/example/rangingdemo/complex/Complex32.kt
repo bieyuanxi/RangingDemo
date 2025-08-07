@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.complex
 
 /**
  * 复数表示，使用value class包装以尽量内联，使用一个Long存储两个Float（通过位运算）

@@ -1,5 +1,6 @@
 package com.example.rangingdemo
 
+import com.example.rangingdemo.complex.Complex32Array
 import com.sun.jna.Memory
 
 object RustFFTWrapper {
