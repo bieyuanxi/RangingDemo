@@ -7,7 +7,7 @@ package com.example.rangingdemo.complex
  */
 class Complex32Array(val size: Int) {
     //两倍空间交替存储real部分和imag部分
-    val inner = FloatArray(size shl 1)
+    var inner = FloatArray(size shl 1)
 
     // 设置第index个复数
     operator fun set(index: Int, complex: Complex32) {
@@ -24,7 +24,7 @@ class Complex32Array(val size: Int) {
         inner[(index shl 1) + 1] = imag
     }
 
-    fun shiftLeft(shift: Int) {
+    fun shiftLeft(shift: Int): Complex32Array {
         val n = inner.size
         var actualShift = (shift shl 1) % n
         if (actualShift < 0) {
@@ -34,12 +34,14 @@ class Complex32Array(val size: Int) {
         inner.reverse(0, actualShift)
         inner.reverse(actualShift, n)
         inner.reverse()
+
+        return this
     }
 
-    fun shiftRight(shift: Int) {
-        shiftLeft(-shift)
+    fun shiftRight(shift: Int): Complex32Array {
+        return shiftLeft(-shift)
     }
-    
+
     fun toRealFloatArray(): FloatArray {
         val arr = FloatArray(size)
         arr.forEachIndexed { index, _ -> arr[index] = inner[(index shl 1)] }
@@ -50,6 +52,12 @@ class Complex32Array(val size: Int) {
         val arr = FloatArray(size)
         arr.forEachIndexed { index, _ -> arr[index] = inner[(index shl 1) + 1] }
         return arr
+    }
+
+    fun clone(): Complex32Array {
+        val result = Complex32Array(size)
+        result.inner = inner.copyOf()
+        return result
     }
 }
 
