@@ -23,5 +23,21 @@ class Complex32Array(val size: Int) {
         inner[index shl 1] = real
         inner[(index shl 1) + 1] = imag
     }
+
+    fun shiftLeft(shift: Int) {
+        val n = inner.size
+        var actualShift = (shift shl 1) % n
+        if (actualShift < 0) {
+            actualShift += n
+        }
+
+        inner.reverse(0, actualShift)
+        inner.reverse(actualShift, n)
+        inner.reverse()
+    }
+
+    fun shiftRight(shift: Int) {
+        shiftLeft(-shift)
+    }
 }
 

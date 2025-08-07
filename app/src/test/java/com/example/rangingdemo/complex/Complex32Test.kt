@@ -1,6 +1,5 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.complex
 
-import com.example.rangingdemo.complex.Complex32
 import org.junit.Test
 
 import org.junit.Assert.*

@@ -22,4 +22,20 @@ class Complex64Array(val size: Int) {
             inner[indexMapper(index)] = value
         }
     }
+
+    fun shiftLeft(shift: Int) {
+        val n = inner.size
+        var actualShift = (shift shl 1) % n
+        if (actualShift < 0) {
+            actualShift += n
+        }
+
+        inner.reverse(0, actualShift)
+        inner.reverse(actualShift, n)
+        inner.reverse()
+    }
+
+    fun shiftRight(shift: Int) {
+        shiftLeft(-shift)
+    }
 }
