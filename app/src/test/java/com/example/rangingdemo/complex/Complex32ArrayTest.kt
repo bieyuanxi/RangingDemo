@@ -97,4 +97,60 @@ class Complex32ArrayTest {
         }
 
     }
+
+    @Test
+    fun testToRealFloatArray() {
+        val arr0 = arrayOf(
+            Complex32(0f, 1.0f),
+            Complex32(2f, 3.0f),
+            Complex32(4f, 5.0f),
+            Complex32(6f, 7.0f),
+            Complex32(8f, 9.0f),
+            Complex32(10f, 11.0f),
+            Complex32(12f, 13.0f),
+            Complex32(14f, 15.0f),
+            Complex32(16f, 17.0f),
+        )
+
+        val array = Complex32Array(arr0.size)
+
+        for (i in 0 until array.size) {
+            array[i] = arr0[i]
+        }
+
+        val realArray =  array.toRealFloatArray()
+
+        for (i in 0 until array.size) {
+            assertEquals(realArray[i], arr0[i].real)
+        }
+
+    }
+
+    @Test
+    fun testToImagFloatArray() {
+        val arr0 = arrayOf(
+            Complex32(0f, 1.0f),
+            Complex32(2f, 3.0f),
+            Complex32(4f, 5.0f),
+            Complex32(6f, 7.0f),
+            Complex32(8f, 9.0f),
+            Complex32(10f, 11.0f),
+            Complex32(12f, 13.0f),
+            Complex32(14f, 15.0f),
+            Complex32(16f, 17.0f),
+        )
+
+        val array = Complex32Array(arr0.size)
+
+        for (i in 0 until array.size) {
+            array[i] = arr0[i]
+        }
+
+        val ImagArray =  array.toImagFloatArray()
+
+        for (i in 0 until array.size) {
+            assertEquals(ImagArray[i], arr0[i].imag)
+        }
+
+    }
 }

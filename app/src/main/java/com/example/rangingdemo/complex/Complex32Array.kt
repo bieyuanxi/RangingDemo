@@ -39,5 +39,17 @@ class Complex32Array(val size: Int) {
     fun shiftRight(shift: Int) {
         shiftLeft(-shift)
     }
+    
+    fun toRealFloatArray(): FloatArray {
+        val arr = FloatArray(size)
+        arr.forEachIndexed { index, _ -> arr[index] = inner[(index shl 1)] }
+        return arr
+    }
+
+    fun toImagFloatArray(): FloatArray {
+        val arr = FloatArray(size)
+        arr.forEachIndexed { index, _ -> arr[index] = inner[(index shl 1) + 1] }
+        return arr
+    }
 }
 
