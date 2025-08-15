@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
-import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.NetworkInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -16,7 +16,6 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.ComponentActivity.RECEIVER_NOT_EXPORTED
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -229,18 +228,30 @@ class WiFiDirectBroadcastReceiver(
 
             WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                 // Respond to new connection or disconnections
-                val networkInfo =
-                    intent.getParcelableExtra<NetworkInfo>(WifiP2pManager.EXTRA_NETWORK_INFO)
+//                val networkInfo =
+//                    intent.getParcelableExtra<NetworkInfo>(WifiP2pManager.EXTRA_NETWORK_INFO)
+//
+//                if (networkInfo?.isConnected == true) {
+//                    // We are connected with the other device, request connection
+//                    // info to find group owner IP
+//                    manager.requestConnectionInfo(channel, connectionListener)
+//                }
 
-                if (networkInfo?.isConnected == true) {
-                    // We are connected with the other device, request connection
-                    // info to find group owner IP
+
+                // ---------------------replacement--------------------------//
+                // link: https://developer.android.google.cn/develop/connectivity/network-ops/reading-network-state
+                val connectivityManager =
+                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val caps = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+
+                val isP2pAvailable =
+                    caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_WIFI_P2P) == true && caps.hasTransport(
+                        NetworkCapabilities.TRANSPORT_WIFI
+                    )
+
+                if (isP2pAvailable) {
                     manager.requestConnectionInfo(channel, connectionListener)
                 }
-
-//                val connectivityManager =
-//                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-//                val network = intent.getParcelableExtra<Network>(WifiP2pManager.EXTRA_NETWORK)
             }
 
             WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {
