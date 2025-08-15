@@ -35,6 +35,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RangingDemo"
         tools:targetApi="31">
+
+        <activity
+            android:name=".WifiDirectActivity"
+            android:exported="false"
+            android:label="@string/title_activity_wifi_direct"
+            android:theme="@style/Theme.RangingDemo" />
+        <activity
+            android:name=".OfdmActivity"
+            android:exported="false"
+            android:label="@string/title_activity_ofdm"
+            android:theme="@style/Theme.RangingDemo" />
         <activity
             android:name=".DebugActivity"
             android:exported="false"

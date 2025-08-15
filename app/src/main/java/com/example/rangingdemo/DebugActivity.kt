@@ -46,6 +46,8 @@ class DebugActivity : ComponentActivity() {
                                 audioTrackViewModel.stopPlay()
                             }
                         )
+                        OfdmUIBtn()
+                        WifiDirectUIBtn()
                     }
 
                 }
