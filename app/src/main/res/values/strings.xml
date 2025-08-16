@@ -3,4 +3,5 @@
     <string name="title_activity_debug">DebugActivity</string>
     <string name="title_activity_ofdm">OfdmActivity</string>
     <string name="title_activity_wifi_direct">WifiDirectActivity</string>
+    <string name="title_activity_audio">AudioActivity</string>
 </resources>
