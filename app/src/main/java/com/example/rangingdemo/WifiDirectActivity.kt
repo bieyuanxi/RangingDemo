@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.net.NetworkInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pDeviceList
@@ -19,14 +18,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.WifiDirectViewModel
@@ -52,14 +58,43 @@ class WifiDirectActivity : ComponentActivity() {
         channel = manager.initialize(this, mainLooper, null)
         receiver = WiFiDirectBroadcastReceiver(manager, channel, wifiDirectViewModel)
 
+        requestConnectionInfo() // 预先请求一次连接信息，更新WifiP2pInfo
+
         enableEdgeToEdge()
         setContent {
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting3(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    Column(modifier = Modifier.padding(innerPadding)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Wifi Direct Control Activity")
+                        }
+
+                        WifiDirectInfo(
+                            viewModel = wifiDirectViewModel,
+                        )
+
+                        Button(onClick = { createGroup() }) {
+                            Text("createGroup")
+                        }
+                        Button(onClick = { discoverPeers() }) {
+                            Text("discoverPeers")
+                        }
+                        Button(onClick = { removeGroup() }) {
+                            Text("removeGroup")
+                        }
+                        Button(onClick = { cancelConnect() }) {
+                            Text("cancelConnect")
+                        }
+                        Button(onClick = { requestConnectionInfo() }) {
+                            Text("requestConnectionInfo")
+                        }
+                        DeviceList(wifiDirectViewModel.peers) { device ->
+                            connectDevice(device)
+                        }
+                    }
                 }
             }
         }
@@ -136,7 +171,8 @@ class WifiDirectActivity : ComponentActivity() {
         })
     }
 
-    fun disconnect() {
+    // 仅用于取消正在进行的连接请求（还未建立连接时
+    fun cancelConnect() {
         manager.cancelConnect(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.d("cancelConnect", "ok")
@@ -148,25 +184,38 @@ class WifiDirectActivity : ComponentActivity() {
         })
     }
 
+    fun requestConnectionInfo() {
+        val wifiDirectViewModel: WifiDirectViewModel by viewModels()
+
+        manager.requestConnectionInfo(channel) { info ->
+            Log.d("connectionListener", "$info")
+
+            wifiDirectViewModel.wifiP2pInfo.value = info
+        }
+    }
+
 
 }
 
 @Composable
-fun Greeting3(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Wifi Direct Control Activity",
-        modifier = modifier
-    )
+fun WifiDirectInfo(viewModel: WifiDirectViewModel, modifier: Modifier = Modifier) {
+    Text("isWifiP2pEnabled: ${viewModel.isWifiP2pEnabled.value}")
+    Text("isGroupFormed: ${viewModel.wifiP2pInfo.value?.groupFormed}")
+    Text("isGroupOwner: ${viewModel.wifiP2pInfo.value?.isGroupOwner}")
+    Text("GOAddress: : ${viewModel.wifiP2pInfo.value?.groupOwnerAddress}")
 }
 
-@Preview(showBackground = true)
 @Composable
-fun GreetingPreview4() {
-    RangingDemoTheme {
-        Greeting3("Android")
+fun DeviceList(devices: List<WifiP2pDevice>, onClick: (device: WifiP2pDevice) -> Unit) {
+    Text(text = "发现设备列表👇")
+    LazyColumn {
+        items(devices) { device ->
+            Card(onClick = { onClick(device) }) {
+                Text(text = device.deviceName)
+            }
+        }
     }
 }
-
 
 @Composable
 fun WifiDirectUIBtn() {
@@ -191,12 +240,14 @@ class WiFiDirectBroadcastReceiver(
 ) : BroadcastReceiver() {
 
     private val connectionListener = WifiP2pManager.ConnectionInfoListener { info ->
-        // String from WifiP2pInfo struct
-        val groupOwnerAddress = info.groupOwnerAddress.hostAddress
+        Log.d("connectionListener", "$info")
 
-        // After the group negotiation, we can determine the group owner
-        // (server).
+        viewmodel.wifiP2pInfo.value = info
+
         if (info.groupFormed) {
+            // String from WifiP2pInfo struct
+//            val groupOwnerAddress = info.groupOwnerAddress.hostAddress
+
             if (info.isGroupOwner) {
                 // Do whatever tasks are specific to the group owner.
                 // One common case is creating a group owner thread and accepting
@@ -215,10 +266,12 @@ class WiFiDirectBroadcastReceiver(
             WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION -> {   // 指示是否启用 WLAN 直连
                 // Check to see if Wi-Fi is enabled and notify appropriate activity
                 val state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)
-                viewmodel.isWifiP2pEnabled = (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED)
+                viewmodel.isWifiP2pEnabled.value = (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED)
+                Log.d("WIFI_P2P_STATE_CHANGED", "${viewmodel.isWifiP2pEnabled.value}")
             }
 
             WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> {   // 指示可用的对等设备列表已更改。
+                Log.d("WIFI_P2P_PEERS_CHANGED", "WIFI_P2P_PEERS_CHANGED_ACTION")
                 // Call WifiP2pManager.requestPeers() to get a list of current peers
                 manager.requestPeers(channel) { peers: WifiP2pDeviceList? ->
                     // Handle peers list
@@ -228,30 +281,24 @@ class WiFiDirectBroadcastReceiver(
 
             WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                 // Respond to new connection or disconnections
-//                val networkInfo =
-//                    intent.getParcelableExtra<NetworkInfo>(WifiP2pManager.EXTRA_NETWORK_INFO)
-//
-//                if (networkInfo?.isConnected == true) {
-//                    // We are connected with the other device, request connection
-//                    // info to find group owner IP
-//                    manager.requestConnectionInfo(channel, connectionListener)
-//                }
-
-
-                // ---------------------replacement--------------------------//
                 // link: https://developer.android.google.cn/develop/connectivity/network-ops/reading-network-state
                 val connectivityManager =
                     context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                val caps = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+                val caps =
+                    connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
 
-                val isP2pAvailable =
-                    caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_WIFI_P2P) == true && caps.hasTransport(
-                        NetworkCapabilities.TRANSPORT_WIFI
-                    )
+                Log.d("WIFI_P2P_CON_CHANGED", "$caps")
+                caps?.let {
+                    val isP2pAvailable =
+                        it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                                && it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
 
-                if (isP2pAvailable) {
-                    manager.requestConnectionInfo(channel, connectionListener)
+                    if (isP2pAvailable) {
+                        manager.requestConnectionInfo(channel, connectionListener)
+                    }
                 }
+
+
             }
 
             WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {
