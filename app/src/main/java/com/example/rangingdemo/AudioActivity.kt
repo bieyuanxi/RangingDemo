@@ -7,9 +7,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,9 +25,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
+import kotlin.system.measureTimeMillis
 
 class AudioActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +52,10 @@ class AudioActivity : ComponentActivity() {
                         }
                         AudioPlayer(audioTrackViewModel)
                         AudioRecorder(audioRecordViewModel)
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        ModulateAudioPlayer(audioTrackViewModel)
                     }
                 }
             }
@@ -109,6 +119,55 @@ fun AudioPlayer(viewModel: AudioTrackViewModel) {
 
 @Composable
 fun AudioRecorder(viewModel: AudioRecordViewModel) {
+    var isRecording by remember { mutableStateOf(false) }
+    Text("AudioRecorder")
+    Button(
+        onClick = {
+            if (!isRecording) {
+                viewModel.start(frameLen = 40 * 48)
+            } else {
+                viewModel.stop()
+            }
+            isRecording = !isRecording
+        }
+    ) {
+        Text(
+            text = if (!isRecording) "Record" else "Stop",
+        )
+    }
+}
+
+@Composable
+fun ModulateAudioPlayer(viewModel: AudioTrackViewModel) {
+    var isPlaying by remember { mutableStateOf(false) }
+    Text("ModulateAudioPlayer")
+    Button(
+        onClick = {
+            if (!isPlaying) {
+                val zc = genZCSequence(1, 81, 81)
+                val ZC = RustFFTWrapper.fft(zc)
+                val ZC_hat = frequencyRearrange(ZC)
+                val audioData = modulate(ZC_hat, 960, 19000, 48000)
+                val stereoAudioData = complexArray2StereoFloatArray(audioData)
+                viewModel.start(
+                    stereoAudioData,
+                    loopCount = 100,
+                    sampleRate = 48000
+                )
+            } else {
+                viewModel.stop()
+            }
+            isPlaying = !isPlaying
+        }
+    ) {
+        Text(
+            text = if (!isPlaying) "Play" else "Stop",
+        )
+    }
+}
+
+@Composable
+fun DemodulateAudioRecorder(viewModel: AudioRecordViewModel) {
     var isRecording by remember { mutableStateOf(false) }
     Text("AudioRecorder")
     Button(

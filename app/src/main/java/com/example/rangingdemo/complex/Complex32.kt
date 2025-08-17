@@ -38,7 +38,9 @@ value class Complex32(private val inner: Long) {
     }
 
     fun abs(): Float {
-        return kotlin.math.sqrt(real * real + imag * imag)
+        val r = real
+        val i = imag
+        return kotlin.math.sqrt(r * r + i * i)
     }
 
     fun conjugate(): Complex32 {

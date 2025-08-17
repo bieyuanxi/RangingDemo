@@ -1,8 +1,12 @@
 package com.example.rangingdemo
 
+import com.example.rangingdemo.complex.Complex32
+import com.example.rangingdemo.complex.Complex32Array
 import kotlin.math.sin
 
-// 生成指定频率的立体声音频
+/**
+ * 生成指定频率(left和right)的立体声音频
+ */
 fun generateStereoAudio(
     durationMs: Int,
     leftFreq: Int,
@@ -32,3 +36,63 @@ fun generateStereoAudio(
 
     return pcmData
 }
+
+/**
+ * 将复数数组转成双声道音频
+ * 只会记录实数部分，忽略虚数部分
+ * @param leftArray 左声道复数数组
+ * @param rightArray 右声道复数数组，只传入左声道默认左右声道数据相同
+ * @param leftRate 左声道倍率
+ * @param rightRate 右声道倍率
+ */
+fun complexArray2StereoFloatArray(leftArray: Complex32Array, rightArray: Complex32Array = leftArray,leftRate: Float = 1.0f, rightRate: Float = 1.0f): FloatArray {
+    assert(leftArray.size == rightArray.size)
+    val stereoAudioData = FloatArray(leftArray.size * 2)
+    for (i in 0 until leftArray.size) {
+        stereoAudioData[2 * i] = leftRate * leftArray[i].real
+        stereoAudioData[2 * i + 1] = rightRate * rightArray[i].real
+    }
+    return stereoAudioData
+}
+
+/**
+ * 返回复数数组的复数共轭数组
+ */
+fun conjugate(array: Complex32Array): Complex32Array {
+    val result = Complex32Array(array.size)
+    for (i in 0 until result.size) {
+        result[i] = Complex32(array[i].real, -array[i].imag)
+    }
+    return result
+}
+
+/**
+ * 求复数数组每个元素的模所组成的数组
+ */
+fun magnitude(array: Complex32Array): FloatArray {
+    val result = FloatArray(array.size)
+    for (i in result.indices) {
+        result[i] = array[i].abs()
+    }
+    return result
+}
+
+class IndexedValue(index: Int, value: Float)
+
+/**
+ * 获取一个数组中最大值那一对
+ * @return (index, value)
+ */
+fun getMaxIndexedValue(array: FloatArray): Pair<Int, Float> {
+    assert(array.isNotEmpty())
+    var result = Pair(0, array[0])
+    for (i in array.indices) {
+        if (result.second < array[i]) {
+            result = Pair(i, array[i])
+        }
+    }
+    return result
+}
+
+
+fun ns2ms(ns: Long) = (ns / 1000_000.0f)
