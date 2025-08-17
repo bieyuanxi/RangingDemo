@@ -44,24 +44,8 @@ class AudioActivity : ComponentActivity() {
                         ) {
                             Text("Audio Track & Record Activity")
                         }
-                        AudioPlayer(
-                            onPlay = {
-                                audioTrackViewModel.startPlay(
-                                    generateStereoAudio(20, 21000, 19000, 48000),
-                                    loopCount = 100,
-                                    sampleRate = 48000
-                                )
-                            }, onStop = {
-                                audioTrackViewModel.stopPlay()
-                            }
-                        )
-                        AudioRecorder(
-                            onRecord = {
-                                audioRecordViewModel.start(frameLen = 40 * 48)
-                            }, onStop = {
-                                audioRecordViewModel.stop()
-                            }
-                        )
+                        AudioPlayer(audioTrackViewModel)
+                        AudioRecorder(audioRecordViewModel)
                     }
                 }
             }
@@ -100,15 +84,19 @@ fun AudioUIBtn() {
 }
 
 @Composable
-fun AudioPlayer(modifier: Modifier = Modifier, onPlay: () -> Unit, onStop: () -> Unit) {
+fun AudioPlayer(viewModel: AudioTrackViewModel) {
     var isPlaying by remember { mutableStateOf(false) }
     Text("AudioPlayer")
-    Button(modifier = modifier,
+    Button(
         onClick = {
-            if (isPlaying) {
-                onStop()
+            if (!isPlaying) {
+                viewModel.start(
+                    generateStereoAudio(20, 21000, 19000, 48000),
+                    loopCount = 100,
+                    sampleRate = 48000
+                )
             } else {
-                onPlay()
+                viewModel.stop()
             }
             isPlaying = !isPlaying
         }
@@ -120,21 +108,21 @@ fun AudioPlayer(modifier: Modifier = Modifier, onPlay: () -> Unit, onStop: () ->
 }
 
 @Composable
-fun AudioRecorder(onRecord: () -> Unit, onStop: () -> Unit) {
+fun AudioRecorder(viewModel: AudioRecordViewModel) {
     var isRecording by remember { mutableStateOf(false) }
     Text("AudioRecorder")
     Button(
         onClick = {
-            if (isRecording) {
-                onStop()
+            if (!isRecording) {
+                viewModel.start(frameLen = 40 * 48)
             } else {
-                onRecord()
+                viewModel.stop()
             }
             isRecording = !isRecording
         }
     ) {
         Text(
-            text = if (!isRecording) "Play" else "Stop",
+            text = if (!isRecording) "Record" else "Stop",
         )
     }
 }

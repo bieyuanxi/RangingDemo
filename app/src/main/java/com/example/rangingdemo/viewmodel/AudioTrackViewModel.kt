@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 class AudioTrackViewModel: ViewModel() {
     private val audioPlayer = StaticAudioPlayer()
 
-    fun startPlay(
+    fun start(
         stereoAudioData: FloatArray,
         loopCount: Int = 0,
         sampleRate: Int = 48000
@@ -22,7 +22,7 @@ class AudioTrackViewModel: ViewModel() {
     /**
      * 停止音频播放
      */
-    fun stopPlay() {
+    fun stop() {
         viewModelScope.launch {
             audioPlayer.stop()
         }
