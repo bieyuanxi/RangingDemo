@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,7 +29,7 @@ import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
-import kotlin.system.measureTimeMillis
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class AudioActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,12 +49,13 @@ class AudioActivity : ComponentActivity() {
                         ) {
                             Text("Audio Track & Record Activity")
                         }
-                        AudioPlayer(audioTrackViewModel)
-                        AudioRecorder(audioRecordViewModel)
+                        AudioPlayerUI()
+                        AudioRecorderUI()
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        ModulateAudioPlayer(audioTrackViewModel)
+                        ModulateAudioPlayerUI()
+                        DemodulateAudioRecorderUI()
                     }
                 }
             }
@@ -94,7 +94,7 @@ fun AudioUIBtn() {
 }
 
 @Composable
-fun AudioPlayer(viewModel: AudioTrackViewModel) {
+fun AudioPlayerUI(viewModel: AudioTrackViewModel = viewModel()) {
     var isPlaying by remember { mutableStateOf(false) }
     Text("AudioPlayer")
     Button(
@@ -102,7 +102,7 @@ fun AudioPlayer(viewModel: AudioTrackViewModel) {
             if (!isPlaying) {
                 viewModel.start(
                     generateStereoAudio(20, 21000, 19000, 48000),
-                    loopCount = 100,
+                    loopCount = -1,
                     sampleRate = 48000
                 )
             } else {
@@ -118,7 +118,7 @@ fun AudioPlayer(viewModel: AudioTrackViewModel) {
 }
 
 @Composable
-fun AudioRecorder(viewModel: AudioRecordViewModel) {
+fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel()) {
     var isRecording by remember { mutableStateOf(false) }
     Text("AudioRecorder")
     Button(
@@ -138,7 +138,7 @@ fun AudioRecorder(viewModel: AudioRecordViewModel) {
 }
 
 @Composable
-fun ModulateAudioPlayer(viewModel: AudioTrackViewModel) {
+fun ModulateAudioPlayerUI(viewModel: AudioTrackViewModel = viewModel()) {
     var isPlaying by remember { mutableStateOf(false) }
     Text("ModulateAudioPlayer")
     Button(
@@ -167,9 +167,9 @@ fun ModulateAudioPlayer(viewModel: AudioTrackViewModel) {
 }
 
 @Composable
-fun DemodulateAudioRecorder(viewModel: AudioRecordViewModel) {
+fun DemodulateAudioRecorderUI(viewModel: AudioRecordViewModel = viewModel()) {
     var isRecording by remember { mutableStateOf(false) }
-    Text("AudioRecorder")
+    Text("DemodulateAudioRecorder")
     Button(
         onClick = {
             if (!isRecording) {
