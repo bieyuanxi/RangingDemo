@@ -22,6 +22,7 @@ dependencyResolutionManagement {
         // 优先使用国内镜像下载项目依赖（包括gradle-src等资源）
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
+        maven(url = "https://jitpack.io")
         // 官方仓库作为后备
         google()
         mavenCentral()

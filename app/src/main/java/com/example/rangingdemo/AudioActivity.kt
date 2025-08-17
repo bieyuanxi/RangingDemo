@@ -1,6 +1,7 @@
 package com.example.rangingdemo
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,11 +26,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 
 class AudioActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +64,7 @@ class AudioActivity : ComponentActivity() {
 
                         ModulateAudioPlayerUI()
                         DemodulateAudioRecorderUI()
+                        MpChartWithStateFlow()
                     }
                 }
             }
@@ -184,4 +193,82 @@ fun DemodulateAudioRecorderUI(viewModel: AudioRecordViewModel = viewModel()) {
             text = if (!isRecording) "Record" else "Stop",
         )
     }
+}
+
+@Composable
+fun MpChartWithStateFlow(
+    viewModel: AudioRecordViewModel = viewModel(),
+    modifier: Modifier = Modifier
+) {
+    // 1. 收集 StateFlow 数据（自动在主线程更新）
+    val data by viewModel.leftChannel.collectAsStateWithLifecycle()
+
+    // 2. 通过 AndroidView 集成 LineChart
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        // 初始化 LineChart
+        factory = { context ->
+            LineChart(context).apply {
+                // 配置图表基本属性
+//                setupLineChart(this)
+            }
+        },
+        // 3. 数据更新时刷新图表（data 变化会触发此回调）
+        update = { lineChart ->
+            if (data.isNotEmpty()) {
+                // 将 FloatArray 转换为 MPAndroidChart 所需的 Entry 列表
+                val entries = data.mapIndexed { index, value ->
+                    Entry(index.toFloat(), value) // x=索引，y=数据值
+                }
+                // 更新图表数据
+                updateLineChartData(lineChart, entries)
+            }
+        }
+    )
+}
+
+// 配置 LineChart 样式（坐标轴、网格线等）
+private fun setupLineChart(chart: LineChart) {
+    chart.apply {
+        // 禁用描述文本
+        description.isEnabled = false
+
+        // 配置 X 轴
+        xAxis.apply {
+            position = XAxis.XAxisPosition.BOTTOM // X 轴在底部
+            setDrawGridLines(false) // 禁用 X 轴网格线
+            axisLineColor = Color.GRAY // 轴线颜色
+        }
+
+        // 配置 Y 轴（左侧）
+        axisLeft.apply {
+            setDrawGridLines(true)
+            gridColor = Color.LTGRAY // 网格线颜色
+            axisLineColor = Color.GRAY
+        }
+
+        // 禁用右侧 Y 轴
+        axisRight.isEnabled = false
+
+        // 启用触摸和缩放
+        setTouchEnabled(true)
+        isDragEnabled = true // 可拖动
+        setScaleEnabled(true) // 可缩放
+    }
+}
+
+// 更新图表数据
+private fun updateLineChartData(chart: LineChart, entries: List<Entry>) {
+    val dataSet = LineDataSet(entries, "data").apply {
+        color = Color.BLUE // 线颜色
+//        lineWidth = 2f // 线宽
+//        valueTextColor = Color.RED
+//        setCircleColor(Color.RED) // 数据点颜色
+//        circleRadius = 4f // 数据点半径
+        setDrawValues(false) // 不显示数据点数值
+    }
+
+    // 设置新数据并刷新图表
+    chart.data = LineData(dataSet, )    // 允许多个dataSet
+    chart.invalidate() // 强制重绘
 }
