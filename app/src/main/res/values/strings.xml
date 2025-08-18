@@ -4,4 +4,6 @@
     <string name="title_activity_ofdm">OfdmActivity</string>
     <string name="title_activity_wifi_direct">WifiDirectActivity</string>
     <string name="title_activity_audio">AudioActivity</string>
+    <string name="title_activity_server">ServerActivity</string>
+    <string name="title_activity_client">ClientActivity</string>
 </resources>

@@ -46,6 +46,7 @@ class AudioRecorder : CoroutineScope {
             if (readSize != null && readSize > 0) {
                 // 发送数据到Flow（复制一份避免缓冲区覆盖）
                 _audioDataFlow.value = buffer.copyOf(readSize)
+//                Log.d("_audioDataFlow", "$readSize")
             }
         }
     }

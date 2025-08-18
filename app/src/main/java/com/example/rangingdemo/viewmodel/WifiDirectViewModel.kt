@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModel
 class WifiDirectViewModel: ViewModel() {
     val isWifiP2pEnabled = mutableStateOf(false)
     val peers = mutableStateListOf<WifiP2pDevice>()
-    val wifiP2pInfo = mutableStateOf<WifiP2pInfo?>(null)
+    val wifiP2pInfo = mutableStateOf(WifiP2pInfo())
 
     fun updateThisDevice(thisDevice: WifiP2pDevice) {
 

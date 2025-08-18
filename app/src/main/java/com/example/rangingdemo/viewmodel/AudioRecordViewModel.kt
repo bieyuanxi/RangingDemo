@@ -29,19 +29,15 @@ class AudioRecordViewModel : ViewModel() {
                     }
                 }
                 _audioChannel.value = Pair(left, right)
+//                Log.d("_audioChannel", "")
             }
         }
 
 //        // Debug
 //        viewModelScope.launch {
-//            leftChannel.collect { data ->
-//                Log.d("leftChannel", "${data.maxOrNull()}")
-//            }
-//        }
-
-//        viewModelScope.launch {
-//            rightChannel.collect { data ->
-//                Log.d("rightChannel", "${data.maxOrNull()}")
+//            audioChannel.collect { data ->
+//                val (l, r) = data
+//                Log.d("audioChannel", "l = ${l.maxOrNull()}, r = ${r.maxOrNull()}")
 //            }
 //        }
     }

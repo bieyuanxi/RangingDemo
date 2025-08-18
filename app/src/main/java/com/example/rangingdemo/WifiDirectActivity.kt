@@ -29,11 +29,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.WifiDirectViewModel
 
@@ -91,6 +94,8 @@ class WifiDirectActivity : ComponentActivity() {
                         Button(onClick = { requestConnectionInfo() }) {
                             Text("requestConnectionInfo")
                         }
+
+                        Jump2ClientActivity()
                         DeviceList(wifiDirectViewModel.peers) { device ->
                             connectDevice(device)
                         }
@@ -227,6 +232,29 @@ fun WifiDirectUIBtn() {
         }
     ) {
         Text("WifiDirect")
+    }
+}
+
+@Composable
+private fun Jump2ClientActivity() {
+    val wifiDirectViewModel: WifiDirectViewModel = viewModel()
+    val context = LocalContext.current
+
+    var host by remember { mutableStateOf("") }
+    host = if (wifiDirectViewModel.wifiP2pInfo.value.groupFormed) {
+        wifiDirectViewModel.wifiP2pInfo.value.groupOwnerAddress.hostAddress
+    } else {
+        ""
+    }
+    Button(
+        onClick = {
+            val intent = Intent(context, ClientActivity::class.java)
+            intent.putExtra("host", host)
+            context.startActivity(intent)
+        },
+        enabled = (host != "")
+    ) {
+        Text("Jump 2 Client Activity")
     }
 }
 

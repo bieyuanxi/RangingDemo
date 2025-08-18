@@ -36,6 +36,16 @@
         android:theme="@style/Theme.RangingDemo"
         tools:targetApi="31">
         <activity
+            android:name=".ClientActivity"
+            android:exported="false"
+            android:label="@string/title_activity_client"
+            android:theme="@style/Theme.RangingDemo" />
+        <activity
+            android:name=".ServerActivity"
+            android:exported="false"
+            android:label="@string/title_activity_server"
+            android:theme="@style/Theme.RangingDemo" />
+        <activity
             android:name=".AudioActivity"
             android:exported="false"
             android:label="@string/title_activity_audio"

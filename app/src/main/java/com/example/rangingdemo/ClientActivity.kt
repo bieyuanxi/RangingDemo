@@ -1,5 +1,6 @@
 package com.example.rangingdemo
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,22 +14,23 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
-import com.example.rangingdemo.viewmodel.AudioTrackViewModel
+import com.example.rangingdemo.viewmodel.ClientViewModel
 
-
-class DebugActivity : ComponentActivity() {
+class ClientActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-
-
         super.onCreate(savedInstanceState)
+
+        val clientViewModel: ClientViewModel by viewModels()
+        val isRunning = clientViewModel.isRunning
+
+        val host = intent.getStringExtra("host")
+
         enableEdgeToEdge()
         setContent {
             RangingDemoTheme {
@@ -38,14 +40,24 @@ class DebugActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Debug Activity")
+                            Text("Client Activity")
                         }
-                        AudioUIBtn()
-                        OfdmUIBtn()
-                        WifiDirectUIBtn()
-                        ServerUIBtn()
+                        Button(onClick = {
+                            if (isRunning.value) {
+                                clientViewModel.stopClient()
+                            } else {
+                                if (host != null) {
+                                    clientViewModel.startClient(host)
+                                }
+                            }
+                        }) { Text(if (!isRunning.value) "start client" else "stop client") }
+                        Button(
+                            onClick = {
+                                clientViewModel.write("hi from client")
+                            }
+                        ) { Text("send2server") }
+                        Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
                     }
-
                 }
             }
         }
@@ -53,19 +65,17 @@ class DebugActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting2(name: String, modifier: Modifier = Modifier) {
+fun Greeting5(name: String, modifier: Modifier = Modifier) {
     Text(
-        text = "This is debug activity",
+        text = "Hello $name!",
         modifier = modifier
     )
 }
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview2() {
+fun GreetingPreview6() {
     RangingDemoTheme {
-        Greeting2("Android")
+        Greeting5("Android")
     }
 }
-
-
