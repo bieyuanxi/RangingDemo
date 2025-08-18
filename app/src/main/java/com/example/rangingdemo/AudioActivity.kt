@@ -3,17 +3,22 @@ package com.example.rangingdemo
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +43,16 @@ import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import kotlinx.coroutines.flow.combine
+
+private val N = 48 * 40 // 20ms
+private val f_c = 19000
+private val f_s = 48000
+private val zc = genZCSequence(1, 81, 81)
+private val ZC = RustFFTWrapper.fft(zc)
+private val ZC_hat = frequencyRearrange(ZC)
+private val ZC_hat_prime = conjugate(ZC_hat)
+private val N_prime = N
 
 class AudioActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +60,9 @@ class AudioActivity : ComponentActivity() {
 
         val audioTrackViewModel: AudioTrackViewModel by viewModels()
         val audioRecordViewModel: AudioRecordViewModel by viewModels()
+
+        val audioData = modulate(ZC_hat, N, f_c, f_s)
+        val stereoAudioData = complexArray2StereoFloatArray(audioData)
 
         enableEdgeToEdge()
         setContent {
@@ -57,14 +75,31 @@ class AudioActivity : ComponentActivity() {
                         ) {
                             Text("Audio Track & Record Activity")
                         }
-                        AudioPlayerUI()
-                        AudioRecorderUI()
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        ModulateAudioPlayerUI()
-                        DemodulateAudioRecorderUI()
-                        MpChartWithStateFlow()
+                        Column {
+                            Text("fixed freq AudioPlayer")
+                            AudioPlayerUI(
+                                stereoAudioData = generateSimpleStereoAudio(
+                                    40,
+                                    21000,
+                                    19000,
+                                    48000
+                                )
+                            )
+                        }
+                        HorizontalDivider(thickness = 2.dp)
+                        Column {
+                            Text("Modulated AudioPlayer")
+                            AudioPlayerUI(stereoAudioData = stereoAudioData)
+                        }
+                        Column {
+                            Text("AudioRecorder")
+                            AudioRecorderUI(frameLen = N)
+                        }
+                        HorizontalDivider(thickness = 2.dp)
+                        Column {
+                            Text("MpChart")
+                            MpChartWithStateFlow()
+                        }
                     }
                 }
             }
@@ -103,14 +138,17 @@ fun AudioUIBtn() {
 }
 
 @Composable
-fun AudioPlayerUI(viewModel: AudioTrackViewModel = viewModel()) {
+fun AudioPlayerUI(
+    viewModel: AudioTrackViewModel = viewModel(),
+    stereoAudioData: FloatArray,
+) {
     var isPlaying by remember { mutableStateOf(false) }
-    Text("AudioPlayer")
+
     Button(
         onClick = {
             if (!isPlaying) {
                 viewModel.start(
-                    generateStereoAudio(20, 21000, 19000, 48000),
+                    stereoAudioData,
                     loopCount = -1,
                     sampleRate = 48000
                 )
@@ -127,13 +165,13 @@ fun AudioPlayerUI(viewModel: AudioTrackViewModel = viewModel()) {
 }
 
 @Composable
-fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel()) {
+fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel(), frameLen: Int) {
     var isRecording by remember { mutableStateOf(false) }
-    Text("AudioRecorder")
+
     Button(
         onClick = {
             if (!isRecording) {
-                viewModel.start(frameLen = 40 * 48)
+                viewModel.start(frameLen = frameLen)
             } else {
                 viewModel.stop()
             }
@@ -146,62 +184,84 @@ fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel()) {
     }
 }
 
-@Composable
-fun ModulateAudioPlayerUI(viewModel: AudioTrackViewModel = viewModel()) {
-    var isPlaying by remember { mutableStateOf(false) }
-    Text("ModulateAudioPlayer")
-    Button(
-        onClick = {
-            if (!isPlaying) {
-                val zc = genZCSequence(1, 81, 81)
-                val ZC = RustFFTWrapper.fft(zc)
-                val ZC_hat = frequencyRearrange(ZC)
-                val audioData = modulate(ZC_hat, 960, 19000, 48000)
-                val stereoAudioData = complexArray2StereoFloatArray(audioData)
-                viewModel.start(
-                    stereoAudioData,
-                    loopCount = 100,
-                    sampleRate = 48000
-                )
-            } else {
-                viewModel.stop()
-            }
-            isPlaying = !isPlaying
-        }
-    ) {
-        Text(
-            text = if (!isPlaying) "Play" else "Stop",
-        )
-    }
-}
-
-@Composable
-fun DemodulateAudioRecorderUI(viewModel: AudioRecordViewModel = viewModel()) {
-    var isRecording by remember { mutableStateOf(false) }
-    Text("DemodulateAudioRecorder")
-    Button(
-        onClick = {
-            if (!isRecording) {
-                viewModel.start(frameLen = 40 * 48)
-            } else {
-                viewModel.stop()
-            }
-            isRecording = !isRecording
-        }
-    ) {
-        Text(
-            text = if (!isRecording) "Record" else "Stop",
-        )
-    }
-}
 
 @Composable
 fun MpChartWithStateFlow(
     viewModel: AudioRecordViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
+    var showLeft by remember { mutableStateOf(true) }
+    var showRight by remember { mutableStateOf(true) }
+
+    Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("leftChannel")
+            Checkbox(checked = showLeft, onCheckedChange = { showLeft = it })
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("rightChannel")
+            Checkbox(checked = showRight, onCheckedChange = { showRight = it })
+        }
+    }
+
     // 1. 收集 StateFlow 数据（自动在主线程更新）
-    val data by viewModel.leftChannel.collectAsStateWithLifecycle()
+    val combinedData by combine(
+        viewModel.leftChannel,
+        viewModel.rightChannel
+    ) { data1, data2 ->
+        Pair(data1, data2) // 包装为 Pair 传递
+    }.collectAsStateWithLifecycle(initialValue = Pair(floatArrayOf(), floatArrayOf()))
+
+    val (data1, data2) = combinedData
+    if (data1.isEmpty() || data2.isEmpty()) {
+        return
+    }
+
+    var leftPeekIndex by remember { mutableStateOf(0) }
+    var rightPeekIndex by remember { mutableStateOf(0) }
+    Row {
+        Text("mL: $leftPeekIndex")
+        Spacer(modifier = Modifier.width(5.dp))
+        Text("mR: $rightPeekIndex")
+    }
+
+    val dataSet1 = run {
+        val cir = demodulate(floatArray2ComplexArray(data1), ZC_hat_prime, N_prime, f_c, f_s)
+        val mag = magnitude(cir)
+        val (index, peek) = getMaxIndexedValue(mag)
+        leftPeekIndex = index
+//        Log.d("getMaxIndexedValueL", "($index. $peek)")
+
+        val entries = mag.mapIndexed { index, value ->
+            Entry(index.toFloat(), value)
+        }
+
+        LineDataSet(entries, "左声道").apply {
+            color = Color.BLUE
+            setDrawValues(false)
+            isVisible = showLeft
+        }
+    }
+
+    val dataSet2 = run {
+        val cir = demodulate(floatArray2ComplexArray(data2), ZC_hat_prime, N_prime, f_c, f_s)
+        val mag = magnitude(cir)
+        val (index, peek) = getMaxIndexedValue(mag)
+        rightPeekIndex = index
+//        Log.d("getMaxIndexedValueR", "($index. $peek)")
+
+        val entries = mag.mapIndexed { index, value ->
+            Entry(index.toFloat(), value)
+        }
+
+        LineDataSet(entries, "右声道").apply {
+            color = Color.GREEN
+
+            setDrawValues(false)
+            isVisible = showRight
+        }
+    }
+
 
     // 2. 通过 AndroidView 集成 LineChart
     AndroidView(
@@ -215,14 +275,9 @@ fun MpChartWithStateFlow(
         },
         // 3. 数据更新时刷新图表（data 变化会触发此回调）
         update = { lineChart ->
-            if (data.isNotEmpty()) {
-                // 将 FloatArray 转换为 MPAndroidChart 所需的 Entry 列表
-                val entries = data.mapIndexed { index, value ->
-                    Entry(index.toFloat(), value) // x=索引，y=数据值
-                }
-                // 更新图表数据
-                updateLineChartData(lineChart, entries)
-            }
+            // 4. 合并数据集并刷新图表
+            lineChart.data = LineData(dataSet1, dataSet2)
+            lineChart.invalidate()
         }
     )
 }
@@ -266,9 +321,10 @@ private fun updateLineChartData(chart: LineChart, entries: List<Entry>) {
 //        setCircleColor(Color.RED) // 数据点颜色
 //        circleRadius = 4f // 数据点半径
         setDrawValues(false) // 不显示数据点数值
+//        isVisible = false
     }
 
     // 设置新数据并刷新图表
-    chart.data = LineData(dataSet, )    // 允许多个dataSet
+    chart.data = LineData(dataSet)    // 允许多个dataSet
     chart.invalidate() // 强制重绘
 }

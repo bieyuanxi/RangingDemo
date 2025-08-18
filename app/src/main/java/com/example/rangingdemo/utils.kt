@@ -7,7 +7,7 @@ import kotlin.math.sin
 /**
  * 生成指定频率(left和right)的立体声音频
  */
-fun generateStereoAudio(
+fun generateSimpleStereoAudio(
     durationMs: Int,
     leftFreq: Int,
     rightFreq: Int,
@@ -53,6 +53,14 @@ fun complexArray2StereoFloatArray(leftArray: Complex32Array, rightArray: Complex
         stereoAudioData[2 * i + 1] = rightRate * rightArray[i].real
     }
     return stereoAudioData
+}
+
+fun floatArray2ComplexArray(array: FloatArray): Complex32Array {
+    val result = Complex32Array(array.size)
+    for (i in array.indices) {
+        result[i] = Complex32(array[i], 0f)
+    }
+    return result
 }
 
 /**

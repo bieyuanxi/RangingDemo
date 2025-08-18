@@ -36,12 +36,12 @@ class AudioRecordViewModel : ViewModel() {
             }
         }
 
-        // Debug
-        viewModelScope.launch {
-            leftChannel.collect { data ->
-                Log.d("leftChannel", "${data.maxOrNull()}")
-            }
-        }
+//        // Debug
+//        viewModelScope.launch {
+//            leftChannel.collect { data ->
+//                Log.d("leftChannel", "${data.maxOrNull()}")
+//            }
+//        }
 
 //        viewModelScope.launch {
 //            rightChannel.collect { data ->
