@@ -13,11 +13,8 @@ import kotlinx.coroutines.launch
 class AudioRecordViewModel : ViewModel() {
     private val audioRecorder = AudioRecorder()
 
-    private val _lChannel = MutableStateFlow(floatArrayOf())
-    val leftChannel: StateFlow<FloatArray> = _lChannel
-
-    private val _rChannel = MutableStateFlow(floatArrayOf())
-    val rightChannel: StateFlow<FloatArray> = _rChannel
+    private val _audioChannel = MutableStateFlow(Pair(floatArrayOf(), floatArrayOf()))
+    val audioChannel: StateFlow<Pair<FloatArray, FloatArray>> = _audioChannel
 
     init {
         viewModelScope.launch {
@@ -31,8 +28,7 @@ class AudioRecordViewModel : ViewModel() {
                         right[index / 2] = fl
                     }
                 }
-                _lChannel.value = left
-                _rChannel.value = right
+                _audioChannel.value = Pair(left, right)
             }
         }
 

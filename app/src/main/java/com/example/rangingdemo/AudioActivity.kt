@@ -23,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -204,27 +205,22 @@ fun MpChartWithStateFlow(
         }
     }
 
-    // 1. 收集 StateFlow 数据（自动在主线程更新）
-    val combinedData by combine(
-        viewModel.leftChannel,
-        viewModel.rightChannel
-    ) { data1, data2 ->
-        Pair(data1, data2) // 包装为 Pair 传递
-    }.collectAsStateWithLifecycle(initialValue = Pair(floatArrayOf(), floatArrayOf()))
-
-    val (data1, data2) = combinedData
+    // 1. 收集 StateFlow 数据
+    val audioChannel by viewModel.audioChannel.collectAsStateWithLifecycle()
+    val (data1, data2) = audioChannel
     if (data1.isEmpty() || data2.isEmpty()) {
         return
     }
 
-    var leftPeekIndex by remember { mutableStateOf(0) }
-    var rightPeekIndex by remember { mutableStateOf(0) }
+    var leftPeekIndex by remember { mutableIntStateOf(0) }
+    var rightPeekIndex by remember { mutableIntStateOf(0) }
     Row {
         Text("mL: $leftPeekIndex")
         Spacer(modifier = Modifier.width(5.dp))
         Text("mR: $rightPeekIndex")
     }
 
+    // TODO: 将耗时工作移动到其他线程
     val dataSet1 = run {
         val cir = demodulate(floatArray2ComplexArray(data1), ZC_hat_prime, N_prime, f_c, f_s)
         val mag = magnitude(cir)
@@ -232,8 +228,8 @@ fun MpChartWithStateFlow(
         leftPeekIndex = index
 //        Log.d("getMaxIndexedValueL", "($index. $peek)")
 
-        val entries = mag.mapIndexed { index, value ->
-            Entry(index.toFloat(), value)
+        val entries = mag.mapIndexed { i, v ->
+            Entry(i.toFloat(), v)
         }
 
         LineDataSet(entries, "左声道").apply {
@@ -243,6 +239,7 @@ fun MpChartWithStateFlow(
         }
     }
 
+    // TODO: 将耗时工作移动到其他线程
     val dataSet2 = run {
         val cir = demodulate(floatArray2ComplexArray(data2), ZC_hat_prime, N_prime, f_c, f_s)
         val mag = magnitude(cir)
@@ -250,8 +247,8 @@ fun MpChartWithStateFlow(
         rightPeekIndex = index
 //        Log.d("getMaxIndexedValueR", "($index. $peek)")
 
-        val entries = mag.mapIndexed { index, value ->
-            Entry(index.toFloat(), value)
+        val entries = mag.mapIndexed { i, v ->
+            Entry(i.toFloat(), v)
         }
 
         LineDataSet(entries, "右声道").apply {
