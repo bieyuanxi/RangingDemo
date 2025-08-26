@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    kotlin("plugin.serialization") version "2.1.21"
 }
 
 android {
@@ -58,6 +59,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation("net.java.dev.jna:jna:5.17.0@aar")   // @aar是必需的，否则会找不到库
     implementation(libs.github.mpandroidchart)
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.net.jna)    // 本地单元测试需要使用不带@aar的包
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
