@@ -282,24 +282,6 @@ fun MpChartWithStateFlow(
 
         }
     )
-//
-//    // 渲染图表
-//    chartData?.let { (dataSet1, dataSet2) ->
-//        AndroidView(
-//            modifier = modifier.fillMaxSize(),
-//            factory = { context ->
-//                LineChart(context).apply {
-//                    setupLineChart(this)
-//                }
-//            },
-//            update = { lineChart ->
-//                dataSet1.isVisible = showLeft
-//                dataSet2.isVisible = showRight
-//                lineChart.data = LineData(dataSet1, dataSet2)
-//                lineChart.invalidate()
-//            }
-//        )
-//    } ?: CircularProgressIndicator(modifier = modifier.fillMaxSize())
 }
 
 // 配置 LineChart 样式（坐标轴、网格线等）
