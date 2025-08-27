@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,7 +47,9 @@ import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.withContext
 
 private val N = 48 * 40 // 20ms
 private val f_c = 19000
@@ -99,7 +104,7 @@ class AudioActivity : ComponentActivity() {
                         HorizontalDivider(thickness = 2.dp)
                         Column {
                             Text("MpChart")
-                            MpChartWithStateFlow()
+                            MpChartWithStateFlowAndPool()
                         }
                     }
                 }
@@ -277,6 +282,125 @@ fun MpChartWithStateFlow(
             lineChart.invalidate()
         }
     )
+}
+
+
+
+// 优化后的Composable
+@Composable
+fun MpChartWithStateFlowAndPool(
+    viewModel: AudioRecordViewModel = viewModel(),
+    modifier: Modifier = Modifier
+) {
+    // 收集数据
+    val audioChannel by viewModel.audioChannel.collectAsStateWithLifecycle()
+
+    var leftPeekIndex by remember { mutableIntStateOf(0) }
+    var rightPeekIndex by remember { mutableIntStateOf(0) }
+    var chartData by remember { mutableStateOf<Pair<LineDataSet, LineDataSet>?>(null) }
+
+    var showLeft by remember { mutableStateOf(true) }
+    var showRight by remember { mutableStateOf(true) }
+
+    Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("leftChannel")
+            Checkbox(checked = showLeft, onCheckedChange = { showLeft = it })
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("rightChannel")
+            Checkbox(checked = showRight, onCheckedChange = { showRight = it })
+        }
+    }
+
+    Row {
+        Text("mL: $leftPeekIndex")
+        Spacer(modifier = Modifier.width(5.dp))
+        Text("mR: $rightPeekIndex")
+    }
+
+    // 处理后台计算
+    LaunchedEffect(audioChannel, showLeft, showRight) {
+        withContext(Dispatchers.Default) {  // 在计算型协程中处理数据
+            // 清空数据，防止内存堆积
+            chartData?.first?.clear()
+            chartData?.second?.clear()
+
+            val (data1, data2) = audioChannel
+            if (data1.isEmpty() || data2.isEmpty()) {
+                return@withContext
+            }
+
+            // 左声道处理
+            val leftCir = demodulate(floatArray2ComplexArray(data1), ZC_hat_prime, N_prime, f_c, f_s)
+            val leftMag = magnitude(leftCir)
+            val (leftIndex, _) = getMaxIndexedValue(leftMag)
+            val leftEntries = leftMag.mapIndexed { i, v ->
+                Entry(i.toFloat(), v)
+            }
+
+            // 右声道处理
+            val rightCir = demodulate(floatArray2ComplexArray(data2), ZC_hat_prime, N_prime, f_c, f_s)
+            val rightMag = magnitude(rightCir)
+            val (rightIndex, _) = getMaxIndexedValue(rightMag)
+            val rightEntries = rightMag.mapIndexed { i, v ->
+                Entry(i.toFloat(), v)
+            }
+
+            // 创建数据集
+            val dataSet1 = LineDataSet(leftEntries, "左声道").apply {
+                color = Color.BLUE
+                setDrawValues(false)
+            }
+            val dataSet2 = LineDataSet(rightEntries, "右声道").apply {
+                color = Color.GREEN
+                setDrawValues(false)
+            }
+
+            // 更新UI状态
+            withContext(Dispatchers.Main) { // 在UI协程中更新
+                leftPeekIndex = leftIndex
+                rightPeekIndex = rightIndex
+                chartData = Pair(dataSet1, dataSet2)
+            }
+        }
+    }
+
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { context ->
+            LineChart(context).apply {
+                setupLineChart(this)
+            }
+        },
+        update = { lineChart ->
+            chartData?.let { (dataSet1, dataSet2) ->
+                dataSet1.isVisible = showLeft
+                dataSet2.isVisible = showRight
+                lineChart.data = LineData(dataSet1, dataSet2)
+                lineChart.invalidate()
+            }
+
+        }
+    )
+//
+//    // 渲染图表
+//    chartData?.let { (dataSet1, dataSet2) ->
+//        AndroidView(
+//            modifier = modifier.fillMaxSize(),
+//            factory = { context ->
+//                LineChart(context).apply {
+//                    setupLineChart(this)
+//                }
+//            },
+//            update = { lineChart ->
+//                dataSet1.isVisible = showLeft
+//                dataSet2.isVisible = showRight
+//                lineChart.data = LineData(dataSet1, dataSet2)
+//                lineChart.invalidate()
+//            }
+//        )
+//    } ?: CircularProgressIndicator(modifier = modifier.fillMaxSize())
 }
 
 // 配置 LineChart 样式（坐标轴、网格线等）
