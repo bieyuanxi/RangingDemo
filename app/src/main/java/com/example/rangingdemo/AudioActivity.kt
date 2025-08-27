@@ -3,7 +3,6 @@ package com.example.rangingdemo
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,12 +12,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -26,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,7 +44,6 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
 
 private val N = 48 * 40 // 20ms
@@ -104,7 +99,7 @@ class AudioActivity : ComponentActivity() {
                         HorizontalDivider(thickness = 2.dp)
                         Column {
                             Text("MpChart")
-                            MpChartWithStateFlowAndPool()
+                            MpChartWithStateFlow()
                         }
                     }
                 }
@@ -190,105 +185,9 @@ fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel(), frameLen: Int
     }
 }
 
-
-@Composable
-fun MpChartWithStateFlow(
-    viewModel: AudioRecordViewModel = viewModel(),
-    modifier: Modifier = Modifier
-) {
-    var showLeft by remember { mutableStateOf(true) }
-    var showRight by remember { mutableStateOf(true) }
-
-    Row {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("leftChannel")
-            Checkbox(checked = showLeft, onCheckedChange = { showLeft = it })
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("rightChannel")
-            Checkbox(checked = showRight, onCheckedChange = { showRight = it })
-        }
-    }
-
-    // 1. 收集 StateFlow 数据
-    val audioChannel by viewModel.audioChannel.collectAsStateWithLifecycle()
-    val (data1, data2) = audioChannel
-    if (data1.isEmpty() || data2.isEmpty()) {
-        return
-    }
-
-    var leftPeekIndex by remember { mutableIntStateOf(0) }
-    var rightPeekIndex by remember { mutableIntStateOf(0) }
-    Row {
-        Text("mL: $leftPeekIndex")
-        Spacer(modifier = Modifier.width(5.dp))
-        Text("mR: $rightPeekIndex")
-    }
-
-    // TODO: 将耗时工作移动到其他线程
-    val dataSet1 = run {
-        val cir = demodulate(floatArray2ComplexArray(data1), ZC_hat_prime, N_prime, f_c, f_s)
-        val mag = magnitude(cir)
-        val (index, peek) = getMaxIndexedValue(mag)
-        leftPeekIndex = index
-//        Log.d("getMaxIndexedValueL", "($index. $peek)")
-
-        val entries = mag.mapIndexed { i, v ->
-            Entry(i.toFloat(), v)
-        }
-
-        LineDataSet(entries, "左声道").apply {
-            color = Color.BLUE
-            setDrawValues(false)
-            isVisible = showLeft
-        }
-    }
-
-    // TODO: 将耗时工作移动到其他线程
-    val dataSet2 = run {
-        val cir = demodulate(floatArray2ComplexArray(data2), ZC_hat_prime, N_prime, f_c, f_s)
-        val mag = magnitude(cir)
-        val (index, peek) = getMaxIndexedValue(mag)
-        rightPeekIndex = index
-//        Log.d("getMaxIndexedValueR", "($index. $peek)")
-
-        val entries = mag.mapIndexed { i, v ->
-            Entry(i.toFloat(), v)
-        }
-
-        LineDataSet(entries, "右声道").apply {
-            color = Color.GREEN
-
-            setDrawValues(false)
-            isVisible = showRight
-        }
-    }
-
-
-    // 2. 通过 AndroidView 集成 LineChart
-    AndroidView(
-        modifier = modifier.fillMaxSize(),
-        // 初始化 LineChart
-        factory = { context ->
-            LineChart(context).apply {
-                // 配置图表基本属性
-//                setupLineChart(this)
-            }
-        },
-        // 3. 数据更新时刷新图表（data 变化会触发此回调）
-        update = { lineChart ->
-            // 4. 合并数据集并刷新图表
-            lineChart.data = LineData(dataSet1, dataSet2)
-            lineChart.invalidate()
-        }
-    )
-}
-
-
-
 // 优化后的Composable
 @Composable
-fun MpChartWithStateFlowAndPool(
+fun MpChartWithStateFlow(
     viewModel: AudioRecordViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
