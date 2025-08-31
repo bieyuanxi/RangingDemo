@@ -4,10 +4,13 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.rangingdemo.Message
+import com.example.rangingdemo.jsonFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -21,6 +24,9 @@ class ClientViewModel : ViewModel() {
     private val _receivedMsg = MutableStateFlow("")
     val receivedMsg: StateFlow<String> = _receivedMsg
 
+    // 消息监听
+    var onMessageReceived: ((Message) -> Unit)? = null
+
     fun startClient(host: String, port: Int = 8888) = viewModelScope.launch(Dispatchers.IO) {
         isRunning.value = true
         socket = Socket(host, port)
@@ -28,7 +34,15 @@ class ClientViewModel : ViewModel() {
             Log.d("Client", "Connected to server: ${socket.inetAddress}")
             val reader = BufferedReader(InputStreamReader(socket.inputStream))
             try {
-                while (reader.readLine().also { _receivedMsg.value = it } != null) { }
+                while (reader.readLine().also {
+                        withContext(Dispatchers.Main) {
+                            Log.d("readLine", it)
+                            val msg = jsonFormat.decodeFromString<Message>(it)
+                            onMessageReceived?.invoke(msg)
+                        }
+                        _receivedMsg.value = it
+                    } != null) {
+                }
             } catch (e: SocketException) {
 
             }
@@ -49,8 +63,4 @@ class ClientViewModel : ViewModel() {
         socket = null
         isRunning.value = false
     }
-}
-
-enum class CMD {
-
 }

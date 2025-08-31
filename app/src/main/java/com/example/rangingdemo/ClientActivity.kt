@@ -2,6 +2,7 @@ package com.example.rangingdemo
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,12 +16,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
+import com.example.rangingdemo.viewmodel.AudioRecordViewModel
+import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import com.example.rangingdemo.viewmodel.ClientViewModel
+
 
 class ClientActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,6 +34,37 @@ class ClientActivity : ComponentActivity() {
         val isRunning = clientViewModel.isRunning
 
         val host = intent.getStringExtra("host")
+
+        val audioRecordViewModel: AudioRecordViewModel by viewModels()
+        val audioTrackViewModel: AudioTrackViewModel by viewModels()
+        clientViewModel.onMessageReceived = { msg ->
+            when(msg) {
+                is CmdStartRecord -> {
+                    audioRecordViewModel.start()
+                }
+                is CmdStopRecord -> {
+                    audioRecordViewModel.stop()
+                }
+                is CmdStartPlay -> {
+                    val audioData = modulate(ZC_hat, N, f_c, f_s)
+                    val stereoAudioData = complexArray2StereoFloatArray(audioData)
+                    audioTrackViewModel.start(stereoAudioData, -1)
+                }
+                is CmdStopPlay -> {
+                    audioTrackViewModel.stop()
+                }
+                is CmdSetParams -> {
+
+                }
+                is CmdPing -> {
+
+                }
+                is CmdRequestArray -> {
+
+                }
+
+            }
+        }
 
         enableEdgeToEdge()
         setContent {
@@ -57,6 +92,7 @@ class ClientActivity : ComponentActivity() {
                             }
                         ) { Text("send2server") }
                         Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
+                        MpChartWithStateFlow()
                     }
                 }
             }
@@ -79,3 +115,13 @@ fun GreetingPreview6() {
         Greeting5("Android")
     }
 }
+
+private val N = 48 * 40 // 40ms
+private val f_c = 19000
+private val f_s = 48000
+private val zc = genZCSequence(1, 81, 81)
+private val ZC = RustFFTWrapper.fft(zc)
+private val ZC_hat = frequencyRearrange(ZC)
+private val ZC_hat_prime = conjugate(ZC_hat)
+private val N_prime = N
+

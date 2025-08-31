@@ -1,13 +1,19 @@
 package com.example.rangingdemo
 
+import kotlinx.serialization.SerialName
 import org.junit.Test
 
 import org.junit.Assert.*
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.*
+import java.sql.Ref
 
-
+interface Project {
+    val name: String
+}
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -32,5 +38,9 @@ class ExampleUnitTest {
         assertEquals(data, obj)
     }
 
+    @Test
+    fun test1() {
+        println(get_distance(40, 145, 1337, 747, 480 * 40, N = 480 * 40))
+    }
 
 }

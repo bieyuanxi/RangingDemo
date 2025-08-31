@@ -2,6 +2,7 @@ package com.example.rangingdemo
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,15 +16,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
+import com.example.rangingdemo.viewmodel.AudioRecordViewModel
+import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class ServerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +38,17 @@ class ServerActivity : ComponentActivity() {
         val isRunning = serverViewModel.isRunning
 
         val cnt = mutableStateOf(0)
+
+        serverViewModel.onMessageReceived = { msg ->
+            when (msg) {
+                is CmdResponseArray -> {
+                    Log.d("CmdResponseArray", msg.array.toString())
+                }
+                is CmdPong -> {
+
+                }
+            }
+        }
 
         enableEdgeToEdge()
         setContent {
@@ -53,10 +70,12 @@ class ServerActivity : ComponentActivity() {
                         }) { Text(if (!isRunning.value) "start server" else "stop server") }
                         Button(
                             onClick = {
-                                serverViewModel.write(serverViewModel.sockets.value, "hi from server: " + cnt.value++)
+//                                serverViewModel.write(serverViewModel.sockets.value, "hi from server: " + cnt.value++)
                             }
                         ) { Text("send2client") }
                         Text("received: ${serverViewModel.receivedMsg.collectAsState().value}")
+                        ServerUI()
+                        MpChartWithStateFlow()
                     }
                 }
             }
@@ -92,4 +111,62 @@ fun ServerUIBtn() {
     ) {
         Text("Server Activity")
     }
+}
+
+private val N = 48 * 40 // 40ms
+private val f_c = 19000
+private val f_s = 48000
+private val zc = genZCSequence(1, 81, 81)
+private val ZC = RustFFTWrapper.fft(zc)
+private val ZC_hat = frequencyRearrange(ZC)
+private val ZC_hat_prime = conjugate(ZC_hat)
+private val N_prime = N
+
+@Composable
+fun ServerUI() {
+    val serverViewModel: ServerViewModel = viewModel()
+    val audioRecordViewModel: AudioRecordViewModel = viewModel()
+    val audioTrackViewModel: AudioTrackViewModel = viewModel()
+
+    Button(
+        onClick = {
+            serverViewModel.viewModelScope.launch {
+                serverViewModel.write2AllClient(
+                    jsonFormat.encodeToString(
+                        CmdStartRecord() as Message // 必须要转成基类
+                    )
+                )
+                audioRecordViewModel.start()
+                delay(100)
+
+                serverViewModel.write2AllClient(
+                    jsonFormat.encodeToString(
+                        CmdStartPlay() as Message
+                    )
+                )
+                val audioData = modulate(ZC_hat, N, f_c, f_s)
+                val stereoAudioData = complexArray2StereoFloatArray(audioData)
+                audioTrackViewModel.start(stereoAudioData, -1)
+                delay(5000)
+
+                serverViewModel.write2AllClient(
+                    jsonFormat.encodeToString(
+                        CmdStopPlay() as Message
+                    )
+                )
+                audioTrackViewModel.stop()
+                delay(100)
+
+                serverViewModel.write2AllClient(
+                    jsonFormat.encodeToString(
+                        CmdStopRecord() as Message
+                    )
+                )
+                audioRecordViewModel.stop()
+
+                // TODO: get distance
+            }
+
+        }
+    ) { Text("start ranging") }
 }
