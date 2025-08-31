@@ -113,14 +113,8 @@ fun ServerUIBtn() {
     }
 }
 
-private val N = 48 * 40 // 40ms
 private val f_c = 19000
-private val f_s = 48000
-private val zc = genZCSequence(1, 81, 81)
-private val ZC = RustFFTWrapper.fft(zc)
-private val ZC_hat = frequencyRearrange(ZC)
-private val ZC_hat_prime = conjugate(ZC_hat)
-private val N_prime = N
+
 
 @Composable
 fun ServerUI() {

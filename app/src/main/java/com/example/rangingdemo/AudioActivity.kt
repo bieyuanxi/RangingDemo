@@ -46,14 +46,8 @@ import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val N = 48 * 40 // 20ms
+
 private val f_c = 19000
-private val f_s = 48000
-private val zc = genZCSequence(1, 81, 81)
-private val ZC = RustFFTWrapper.fft(zc)
-private val ZC_hat = frequencyRearrange(ZC)
-private val ZC_hat_prime = conjugate(ZC_hat)
-private val N_prime = N
 
 class AudioActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
