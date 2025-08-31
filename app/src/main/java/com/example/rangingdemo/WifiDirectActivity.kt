@@ -95,7 +95,7 @@ class WifiDirectActivity : ComponentActivity() {
                             Text("requestConnectionInfo")
                         }
 
-                        Jump2ClientActivity()
+                        Jump2RangingActivity()
                         DeviceList(wifiDirectViewModel.peers) { device ->
                             connectDevice(device)
                         }
@@ -236,25 +236,29 @@ fun WifiDirectUIBtn() {
 }
 
 @Composable
-private fun Jump2ClientActivity() {
+private fun Jump2RangingActivity() {
     val wifiDirectViewModel: WifiDirectViewModel = viewModel()
     val context = LocalContext.current
 
     var host by remember { mutableStateOf("") }
+    var is_group_owner by remember { mutableStateOf(false) }
     host = if (wifiDirectViewModel.wifiP2pInfo.value.groupFormed) {
         wifiDirectViewModel.wifiP2pInfo.value.groupOwnerAddress.hostAddress
     } else {
         ""
     }
+    is_group_owner = wifiDirectViewModel.wifiP2pInfo.value.isGroupOwner
+
     Button(
         onClick = {
-            val intent = Intent(context, ClientActivity::class.java)
+            val intent = Intent(context, RangingActivity::class.java)
             intent.putExtra("host", host)
+            intent.putExtra("is_group_owner", is_group_owner)
             context.startActivity(intent)
         },
         enabled = (host != "")
     ) {
-        Text("Jump 2 Client Activity")
+        Text("Jump 2 Ranging Activity")
     }
 }
 
