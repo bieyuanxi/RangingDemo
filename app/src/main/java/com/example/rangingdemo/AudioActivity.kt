@@ -93,7 +93,7 @@ class AudioActivity : ComponentActivity() {
                         HorizontalDivider(thickness = 2.dp)
                         Column {
                             Text("MpChart")
-                            MpChartWithStateFlow()
+                            MpChartWithStateFlow(f_c)
                         }
                     }
                 }
@@ -182,6 +182,7 @@ fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel(), frameLen: Int
 // 优化后的Composable
 @Composable
 fun MpChartWithStateFlow(
+    f_c: Int,
     viewModel: AudioRecordViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {

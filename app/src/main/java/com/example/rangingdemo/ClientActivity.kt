@@ -92,7 +92,7 @@ class ClientActivity : ComponentActivity() {
                             }
                         ) { Text("send2server") }
                         Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
-                        MpChartWithStateFlow()
+                        MpChartWithStateFlow(f_c)
                     }
                 }
             }
