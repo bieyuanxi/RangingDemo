@@ -34,7 +34,7 @@ class MessageKtTest {
 
         run {
             val msg: Message = CmdSetParams(
-                index = 0,
+                f_c = 19000,
                 arrayOf(Param(960 * 40, 19000, 0, 81), Param(960 * 20, 17000, 0, 41))
             )
             val string = jsonFormat.encodeToString(msg)
@@ -44,12 +44,17 @@ class MessageKtTest {
         }
 
         run {
-            val msg: Message = CmdResponseArray(intArrayOf(1, 2, 3, 4))
+            val msg: Message = CmdResponseArray(18000, intArrayOf(1, 2, 3, 4), intArrayOf(5, 6, 7, 8))
 
             val string = jsonFormat.encodeToString(msg)
             println(string)
             val obj = jsonFormat.decodeFromString<Message>(string)
-            print_obj(obj)
+            when(obj) {
+                is CmdResponseArray -> {
+                    println(obj.f_c)
+                    println(obj.array_left.contentToString())
+                }
+            }
         }
 
     }
@@ -65,11 +70,12 @@ private fun print_obj(obj: Message) {
             for (param in obj.params) {
                 println(param)
             }
-            println(obj.index)
+            println(obj.f_c)
         }
 
         is CmdResponseArray -> {
-            println(obj.array)
+            println(obj.array_left.contentToString())
+            println(obj.array_right.contentToString())
         }
     }
 }

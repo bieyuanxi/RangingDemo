@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rangingdemo.Message
+import com.example.rangingdemo.jsonFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +29,7 @@ class ServerViewModel: ViewModel() {
     private val _receivedMsg = MutableStateFlow("")
     val receivedMsg: StateFlow<String> = _receivedMsg
 
-    private val clientConnections = ConcurrentHashMap<String, ClientConnection>()
+    val clientConnections = ConcurrentHashMap<String, ClientConnection>()
 
     // 消息监听
     var onMessageReceived: ((Message) -> Unit)? = null
@@ -68,7 +69,7 @@ class ServerViewModel: ViewModel() {
             while (isRunning.value && !clientConnection.socket.isClosed) {
                 val json = clientConnection.reader.readLine() ?: break
                 Log.d("handleClientMessages", json)
-                val msg = Json.decodeFromString<Message>(json)
+                val msg = jsonFormat.decodeFromString<Message>(json)
                 withContext(Dispatchers.Main) {
                     onMessageReceived?.invoke(msg)
                 }
@@ -100,7 +101,7 @@ class ServerViewModel: ViewModel() {
 }
 
 // 客户端连接封装类
-private class ClientConnection(val socket: Socket, val clientId: String) {
+class ClientConnection(val socket: Socket, val clientId: String) {
     val reader = BufferedReader(InputStreamReader(socket.inputStream))
     val writer = PrintWriter(socket.outputStream, true)
 

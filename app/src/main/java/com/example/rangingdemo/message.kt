@@ -46,16 +46,17 @@ class CmdRequestArray() : Message
 
 @Serializable
 @SerialName("cmd_response_array")
-class CmdResponseArray(val array: IntArray) : Message
+class CmdResponseArray(val f_c: Int, val array_left: IntArray, val array_right: IntArray) : Message
 
 
 @Serializable
 @SerialName("data")
-data class Param(val N: Int, val f_c: Int, val u: Int, val q: Int) : Message
+data class Param(val N: Int, val f_c: Int, val u: Int, val q: Int)
 
 @Serializable
 @SerialName("cmd_set_params")
-class CmdSetParams(val index: Int, val params: Array<Param>) : Message
+// f_c 为该设备所用频率，params 为全体设备使用的信息
+class CmdSetParams(val f_c: Int, val params: Array<Param>) : Message
 
 val module = SerializersModule {
     polymorphic(Message::class) {
