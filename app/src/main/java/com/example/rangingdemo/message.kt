@@ -51,7 +51,7 @@ class CmdResponseArray(val array: IntArray) : Message
 
 @Serializable
 @SerialName("data")
-data class Param(val N: Int, val f_c: Int, val u: Int, val q: Int) : Message
+data class Param(val N: Int, val f_c: Int, val u: Int, val q: Int)
 
 @Serializable
 @SerialName("cmd_set_params")
