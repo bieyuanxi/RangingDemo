@@ -312,25 +312,8 @@ class WiFiDirectBroadcastReceiver(
             }
 
             WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
-                // Respond to new connection or disconnections
-                // link: https://developer.android.google.cn/develop/connectivity/network-ops/reading-network-state
-                val connectivityManager =
-                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                val caps =
-                    connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
-
-                Log.d("WIFI_P2P_CON_CHANGED", "$caps")
-                caps?.let {
-                    val isP2pAvailable =
-                        it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                                && it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-
-                    if (isP2pAvailable) {
-                        manager.requestConnectionInfo(channel, connectionListener)
-                    }
-                }
-
-
+                Log.d("WIFI_P2P_CON_CHANGED", "")
+                manager.requestConnectionInfo(channel, connectionListener)
             }
 
             WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {
