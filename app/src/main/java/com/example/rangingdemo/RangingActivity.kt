@@ -1,6 +1,5 @@
 package com.example.rangingdemo
 
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -14,44 +13,38 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
+import com.example.rangingdemo.viewmodel.AudioProcessingParams
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import com.example.rangingdemo.viewmodel.ClientViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class RangingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,7 +60,8 @@ class RangingActivity : ComponentActivity() {
         serverViewModel.onMessageReceived = { msg ->
             when (msg) {
                 is CmdResponseArray -> {
-                    Log.d("CmdResponseArray", msg.array.toString())
+                    Log.d("CmdResponseArrayLeft", "fc: ${msg.f_c}, ${msg.array_left.contentToString()}")
+                    Log.d("CmdResponseArrayRight", "fc: ${msg.f_c}, ${msg.array_right.contentToString()}")
                 }
 
                 is CmdPong -> {
@@ -78,29 +72,54 @@ class RangingActivity : ComponentActivity() {
 
         val clientViewModel: ClientViewModel by viewModels()
         clientViewModel.onMessageReceived = { msg ->
-            when(msg) {
+            when (msg) {
                 is CmdStartRecord -> {
                     audioRecordViewModel.start(N)
                 }
+
                 is CmdStopRecord -> {
                     audioRecordViewModel.stop()
                 }
+
                 is CmdStartPlay -> {
                     val audioData = modulate(ZC_hat, N, f_c, f_s)
                     val stereoAudioData = complexArray2StereoFloatArray(audioData)
                     audioTrackViewModel.start(stereoAudioData, -1)
                 }
+
                 is CmdStopPlay -> {
                     audioTrackViewModel.stop()
                 }
-                is CmdSetParams -> {
 
+                is CmdSetParams -> {
+                    f_c = msg.f_c
+                    val params = msg.params.map { param ->
+                        AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                    }
+                    audioRecordViewModel.setProcessingParams(params)
                 }
+
                 is CmdPing -> {
 
                 }
-                is CmdRequestArray -> {
 
+                is CmdRequestArray -> {
+                    val indexList = audioRecordViewModel.indexList.value
+                    val arrayL = IntArray(indexList.size) { i ->
+                        indexList[i].first
+                    }
+                    val arrayR = IntArray(indexList.size) { i ->
+                        indexList[i].second
+                    }
+                    clientViewModel.write(
+                        jsonFormat.encodeToString(
+                            CmdResponseArray(
+                                f_c,
+                                arrayL,
+                                arrayR
+                            ) as Message
+                        )
+                    )
                 }
 
             }
@@ -118,7 +137,7 @@ class RangingActivity : ComponentActivity() {
                         ) {
                             Text("Ranging Activity")
                         }
-                        if(isGroupOwner) {
+                        if (isGroupOwner) {
                             NewServerUI()
                             HorizontalDivider(thickness = 2.dp)
                         }
@@ -135,8 +154,7 @@ class RangingActivity : ComponentActivity() {
 }
 
 
-
-private val f_c = 19000
+private var f_c = 19000
 
 
 @Composable
@@ -163,7 +181,31 @@ fun NewServerUI() {
         Spacer(Modifier.padding(10.dp))
         Button(
             onClick = {
+                val deviceCnt = serverViewModel.clientConnections.size
+                val paramsList = (0 until deviceCnt).map { index ->
+                    Param(48 * 40, 18000 + 1000 * index, 1, 37)
+                }
+
                 serverViewModel.viewModelScope.launch {
+                    val deferredJobs = serverViewModel.clientConnections.entries.withIndex()
+                        .map { (index, entry) ->
+                            // 用async启动并行协程
+                            async(Dispatchers.IO) {
+                                serverViewModel.write(
+                                    entry.key,
+                                    jsonFormat.encodeToString(
+                                        CmdSetParams(
+                                            18000 + 1000 * index,
+                                            paramsList.toTypedArray()
+                                        ) as Message
+                                    )
+                                )
+                                delay(10)
+                            }
+                        }
+                    // 等待所有并行任务完成
+                    deferredJobs.awaitAll()
+
                     serverViewModel.write2AllClient(
                         jsonFormat.encodeToString(
                             CmdStartRecord() as Message // 必须要转成基类
@@ -176,7 +218,14 @@ fun NewServerUI() {
                             CmdStartPlay() as Message // 必须要转成基类
                         )
                     )
-                    delay(5000)
+
+                    delay(2000)
+                    serverViewModel.write2AllClient(
+                        jsonFormat.encodeToString(
+                            CmdRequestArray() as Message // 必须要转成基类
+                        )
+                    )
+                    delay(100)
 
                     serverViewModel.write2AllClient(
                         jsonFormat.encodeToString(

@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
@@ -42,7 +41,7 @@ class ServerActivity : ComponentActivity() {
         serverViewModel.onMessageReceived = { msg ->
             when (msg) {
                 is CmdResponseArray -> {
-                    Log.d("CmdResponseArray", msg.array.toString())
+                    Log.d("CmdResponseArray", msg.array_left.toString())
                 }
                 is CmdPong -> {
 
