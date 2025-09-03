@@ -167,7 +167,7 @@ class RangingActivity : ComponentActivity() {
 
                         NewClientUI(host)
                         HorizontalDivider(thickness = 2.dp)
-                        MpChartWithStateFlow(f_c = f_c.intValue)
+                        MpChartWithStateFlow(f_c = f_c.intValue, audioRecordViewModel.cirList)
 //                        StateFlow2()
                     }
                 }

@@ -74,7 +74,7 @@ class ServerActivity : ComponentActivity() {
                         ) { Text("send2client") }
                         Text("received: ${serverViewModel.receivedMsg.collectAsState().value}")
                         ServerUI()
-                        MpChartWithStateFlow(f_c)
+//                        MpChartWithStateFlow(f_c)
                     }
                 }
             }

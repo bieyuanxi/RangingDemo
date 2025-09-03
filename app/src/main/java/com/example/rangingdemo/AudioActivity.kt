@@ -3,6 +3,7 @@ package com.example.rangingdemo
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,9 +24,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -33,18 +36,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.rangingdemo.lib.RustFFTWrapper
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rangingdemo.viewmodel.AudioProcessingParams
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.StateFlow
 
 
 private val f_c = 19000
@@ -58,6 +60,8 @@ class AudioActivity : ComponentActivity() {
 
         val audioData = modulate(ZC_hat, N, f_c, f_s)
         val stereoAudioData = complexArray2StereoFloatArray(audioData)
+
+        audioRecordViewModel.setProcessingParams(listOf(AudioProcessingParams(ZC_hat_prime, N_prime, f_c)))
 
         enableEdgeToEdge()
         setContent {
@@ -93,7 +97,7 @@ class AudioActivity : ComponentActivity() {
                         HorizontalDivider(thickness = 2.dp)
                         Column {
                             Text("MpChart")
-                            MpChartWithStateFlow(f_c)
+                            MpChartWithStateFlow(f_c, audioRecordViewModel.cirList)
                         }
                     }
                 }
@@ -183,29 +187,85 @@ fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel(), frameLen: Int
 @Composable
 fun MpChartWithStateFlow(
     f_c: Int,
+    cirListStateFlow: StateFlow<List<Pair<FloatArray, FloatArray>>>,
     viewModel: AudioRecordViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
-    // 收集数据
-    val audioChannel by viewModel.audioChannel.collectAsStateWithLifecycle()
+    val processingParams by viewModel.processingParams.collectAsStateWithLifecycle()
 
-    var leftPeekIndex by remember { mutableIntStateOf(0) }
-    var rightPeekIndex by remember { mutableIntStateOf(0) }
-    var chartData by remember { mutableStateOf<Pair<LineDataSet, LineDataSet>?>(null) }
-
-    var showLeft by remember { mutableStateOf(true) }
-    var showRight by remember { mutableStateOf(true) }
-
-    Row {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("leftChannel")
-            Checkbox(checked = showLeft, onCheckedChange = { showLeft = it })
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("rightChannel")
-            Checkbox(checked = showRight, onCheckedChange = { showRight = it })
+    val isLeftVisibleList = remember(processingParams) {
+        mutableStateListOf<Boolean>().apply() {
+            repeat(processingParams.size) {
+                add(true)
+            }
         }
     }
+
+    val isRightVisibleList = remember(processingParams) {
+        mutableStateListOf<Boolean>().apply() {
+            repeat(processingParams.size) {
+                add(true)
+            }
+        }
+    }
+
+    val fcList = remember(processingParams) {
+        buildList {
+            processingParams.forEach {
+                add(it.f_c)
+            }
+        }
+    }
+
+    Column {
+        processingParams.forEachIndexed { i, params ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("f_c=${params.f_c} ")
+                Text("lChannel")
+                Checkbox(checked = isLeftVisibleList[i], onCheckedChange = { isLeftVisibleList[i] = it })
+                Text("rChannel")
+                Checkbox(checked = isRightVisibleList[i], onCheckedChange = { isRightVisibleList[i] = it })
+            }
+        }
+    }
+
+    val cirList by cirListStateFlow.collectAsStateWithLifecycle()
+    val lineDataSetList = remember { mutableStateListOf<LineDataSet>() }
+
+    LaunchedEffect(cirList, isLeftVisibleList.toList(), isRightVisibleList.toList()) {
+        lineDataSetList.forEach {
+            it.clear()  // 释放LineDataSet持有的entries
+        }
+        lineDataSetList.clear() // 清空数据
+
+        cirList.forEachIndexed { index, pair ->
+            // TODO: 减少对象分配频率
+            val lEntry = pair.first.mapIndexed { i, fl ->
+                Entry(i.toFloat(), fl)
+            }
+            val rEntry = pair.second.mapIndexed { i, fl ->
+                Entry(i.toFloat(), fl)
+            }
+
+            // 创建数据集
+            val lDataSet = LineDataSet(lEntry, "${fcList[index]}L").apply {
+                color = Color.BLUE
+                isVisible = isLeftVisibleList.getOrElse(index) { true }
+                setDrawValues(false)
+            }
+            val rDataSet = LineDataSet(rEntry, "${fcList[index]}R").apply {
+                color = Color.GREEN
+                isVisible = isRightVisibleList.getOrElse(index) { true }
+                setDrawValues(false)
+            }
+            lineDataSetList.add(lDataSet)
+            lineDataSetList.add(rDataSet)
+        }
+    }
+
+    // TODO: 索引展示
+    var leftPeekIndex by remember { mutableIntStateOf(0) }
+    var rightPeekIndex by remember { mutableIntStateOf(0) }
 
     Row {
         Text("mL: $leftPeekIndex")
@@ -213,68 +273,18 @@ fun MpChartWithStateFlow(
         Text("mR: $rightPeekIndex")
     }
 
-    // 处理后台计算
-    LaunchedEffect(audioChannel, showLeft, showRight) {
-        withContext(Dispatchers.Default) {  // 在计算型协程中处理数据
-            // 清空数据，防止内存堆积
-            chartData?.first?.clear()
-            chartData?.second?.clear()
-
-            val (data1, data2) = audioChannel
-            if (data1.isEmpty() || data2.isEmpty()) {
-                return@withContext
-            }
-
-            // 左声道处理
-            val leftCir = demodulate(floatArray2ComplexArray(data1), ZC_hat_prime, N_prime, f_c, f_s)
-            val leftMag = magnitude(leftCir)
-            val (leftIndex, _) = getMaxIndexedValue(leftMag)
-            val leftEntries = leftMag.mapIndexed { i, v ->
-                Entry(i.toFloat(), v)
-            }
-
-            // 右声道处理
-            val rightCir = demodulate(floatArray2ComplexArray(data2), ZC_hat_prime, N_prime, f_c, f_s)
-            val rightMag = magnitude(rightCir)
-            val (rightIndex, _) = getMaxIndexedValue(rightMag)
-            val rightEntries = rightMag.mapIndexed { i, v ->
-                Entry(i.toFloat(), v)
-            }
-
-            // 创建数据集
-            val dataSet1 = LineDataSet(leftEntries, "左声道").apply {
-                color = Color.BLUE
-                setDrawValues(false)
-            }
-            val dataSet2 = LineDataSet(rightEntries, "右声道").apply {
-                color = Color.GREEN
-                setDrawValues(false)
-            }
-
-            // 更新UI状态
-            withContext(Dispatchers.Main) { // 在UI协程中更新
-                leftPeekIndex = leftIndex
-                rightPeekIndex = rightIndex
-                chartData = Pair(dataSet1, dataSet2)
-            }
-        }
-    }
-
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { context ->
+            Log.d("LineChartInit", "AndroidView LineChart init")
             LineChart(context).apply {
                 setupLineChart(this)
             }
         },
         update = { lineChart ->
-            chartData?.let { (dataSet1, dataSet2) ->
-                dataSet1.isVisible = showLeft
-                dataSet2.isVisible = showRight
-                lineChart.data = LineData(dataSet1, dataSet2)
-                lineChart.invalidate()
-            }
-
+            lineChart.clear()
+            lineChart.data = LineData(lineDataSetList.toList())
+            lineChart.invalidate()
         }
     )
 }
