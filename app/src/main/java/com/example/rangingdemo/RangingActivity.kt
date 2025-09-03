@@ -52,6 +52,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+// TODO: 应该使用更好的方法
+val leftArrays = Array(10) { i ->
+    intArrayOf()
+}
+val rightArrays = Array(10) { i ->
+    intArrayOf()
+}
+
 class RangingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,11 +71,20 @@ class RangingActivity : ComponentActivity() {
         val audioTrackViewModel: AudioTrackViewModel by viewModels()
 
         val serverViewModel: ServerViewModel by viewModels()
+
         serverViewModel.onMessageReceived = { msg ->
             when (msg) {
                 is CmdResponseArray -> {
-                    Log.d("CmdResponseArrayLeft", "fc: ${msg.f_c}, ${msg.array_left.contentToString()}")
-                    Log.d("CmdResponseArrayRight", "fc: ${msg.f_c}, ${msg.array_right.contentToString()}")
+                    leftArrays[(msg.f_c - start_f_c) / 1000] = msg.array_left
+                    rightArrays[(msg.f_c - start_f_c) / 1000] = msg.array_right
+                    Log.d(
+                        "CmdResponseArrayLeft",
+                        "fc: ${msg.f_c}, ${msg.array_left.contentToString()}"
+                    )
+                    Log.d(
+                        "CmdResponseArrayRight",
+                        "fc: ${msg.f_c}, ${msg.array_right.contentToString()}"
+                    )
                 }
 
                 is CmdPong -> {
@@ -162,12 +179,17 @@ class RangingActivity : ComponentActivity() {
 
 private var f_c = mutableIntStateOf(19000)
 
+private val start_f_c = 18000
+private val step = 1000
+
 
 @Composable
 fun NewServerUI() {
     val serverViewModel: ServerViewModel = viewModel()
 
     val isServerRunning by remember { serverViewModel.isRunning }
+
+    var distance by remember { mutableStateOf(0f) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -189,7 +211,7 @@ fun NewServerUI() {
             onClick = {
                 val deviceCnt = serverViewModel.clientConnections.size
                 val paramsList = (0 until deviceCnt).map { index ->
-                    Param(48 * 40, 18000 + 1000 * index, 1, 37)
+                    Param(48 * 40, start_f_c + step * index, 1, 37)
                 }
 
                 serverViewModel.viewModelScope.launch {
@@ -246,7 +268,20 @@ fun NewServerUI() {
                         )
                     )
 
-                    // TODO: get distance
+                    delay(100)
+                    // TODO: 多设备适配
+                    distance = get_distance(
+                        m_aa = leftArrays[0][0],
+                        m_ab = leftArrays[1][0],
+                        m_ba = leftArrays[0][1],
+                        m_bb = leftArrays[1][1],
+                        N_prime = N,
+                        N = N
+                    )
+                    Log.d(
+                        "calculateResult",
+                        distance.toString()
+                    )
                 }
 
             }
@@ -254,6 +289,7 @@ fun NewServerUI() {
     }
 
     Text("Server received: ${serverViewModel.receivedMsg.collectAsState().value}")
+    Text("distance: $distance")
 }
 
 
