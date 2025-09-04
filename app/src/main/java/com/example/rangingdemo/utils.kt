@@ -1,7 +1,17 @@
 package com.example.rangingdemo
 
+import android.annotation.SuppressLint
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.AudioTrack
+import android.media.AudioTrack.MODE_STATIC
+import android.media.AudioTrack.PERFORMANCE_MODE_LOW_LATENCY
+import android.media.MediaRecorder
+import android.util.Log
 import com.example.rangingdemo.complex.Complex32
 import com.example.rangingdemo.complex.Complex32Array
+import java.text.DecimalFormat
 import kotlin.math.sin
 
 /**
@@ -85,8 +95,6 @@ fun magnitude(array: Complex32Array): FloatArray {
     return result
 }
 
-class IndexedValue(index: Int, value: Float)
-
 /**
  * 获取一个数组中最大值那一对
  * @return (index, value)
@@ -103,21 +111,6 @@ fun getMaxIndexedValue(array: FloatArray): Pair<Int, Float> {
 }
 
 
-fun ns2ms(ns: Long) = (ns / 1000_000.0f)
+fun ns2ms(ns: Long) = (ns / 1_000_000.0f)
 
-
-fun get_distance(
-    m_aa: Int, m_ab: Int, m_bb: Int, m_ba: Int,
-    N_prime: Int, c: Float = 343.0f, N: Int, f_s: Int = 48000
-): Float {
-    val m = m_aa + m_bb - m_ab - m_ba
-    val range = c * N_prime / f_s
-
-    for (i in -2..2) {
-        val d = -(m + (i * N_prime)) * c * N / f_s / N_prime
-        if (d in 0.0f..range) {
-            return d / 2
-        }
-    }
-    return -1.0f
-}
+fun formatNumber(number: Number) = DecimalFormat("#.00").format(number)

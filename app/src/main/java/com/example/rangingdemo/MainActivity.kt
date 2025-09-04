@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import com.example.rangingdemo.activities.DebugActivity
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 
 class MainActivity : ComponentActivity() {

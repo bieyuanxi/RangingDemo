@@ -36,12 +36,12 @@
         android:theme="@style/Theme.RangingDemo"
         tools:targetApi="31">
         <activity
-            android:name=".GvrActivity"
+            android:name=".activities.GvrActivity"
             android:exported="false"
             android:label="@string/title_activity_gvr"
             android:theme="@style/Theme.RangingDemo" />
         <activity
-            android:name=".RangingActivity"
+            android:name=".activities.RangingActivity"
             android:exported="false"
             android:label="@string/title_activity_ranging"
             android:theme="@style/Theme.RangingDemo" />
@@ -56,22 +56,22 @@
             android:label="@string/title_activity_server"
             android:theme="@style/Theme.RangingDemo" />
         <activity
-            android:name=".AudioActivity"
+            android:name=".activities.AudioActivity"
             android:exported="false"
             android:label="@string/title_activity_audio"
             android:theme="@style/Theme.RangingDemo" />
         <activity
-            android:name=".WifiDirectActivity"
+            android:name=".activities.WifiDirectActivity"
             android:exported="false"
             android:label="@string/title_activity_wifi_direct"
             android:theme="@style/Theme.RangingDemo" />
         <activity
-            android:name=".OfdmActivity"
+            android:name=".activities.OfdmActivity"
             android:exported="false"
             android:label="@string/title_activity_ofdm"
             android:theme="@style/Theme.RangingDemo" />
         <activity
-            android:name=".DebugActivity"
+            android:name=".activities.DebugActivity"
             android:exported="false"
             android:label="@string/title_activity_debug"
             android:theme="@style/Theme.RangingDemo" />

@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.activities
 
 import android.content.Intent
 import android.os.Bundle

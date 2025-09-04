@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.activities
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -36,7 +36,6 @@ class DebugActivity : ComponentActivity() {
                         AudioUIBtn()
                         OfdmUIBtn()
                         WifiDirectUIBtn()
-                        ServerUIBtn()
                         GrvUIButton()
                     }
 

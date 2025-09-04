@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.activities
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,12 +23,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.rangingdemo.complex.Complex32
 import com.example.rangingdemo.complex.Complex32Array
+import com.example.rangingdemo.conjugate
+import com.example.rangingdemo.demodulate
+import com.example.rangingdemo.frequencyRearrange
+import com.example.rangingdemo.genZCSequence
+import com.example.rangingdemo.getMaxIndexedValue
 import com.example.rangingdemo.lib.RustFFTWrapper
+import com.example.rangingdemo.magnitude
+import com.example.rangingdemo.modulate
+import com.example.rangingdemo.ns2ms
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import kotlin.system.measureNanoTime
-import kotlin.system.measureTimeMillis
 
 class OfdmActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

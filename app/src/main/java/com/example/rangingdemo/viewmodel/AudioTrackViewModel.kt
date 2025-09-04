@@ -2,7 +2,7 @@ package com.example.rangingdemo.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rangingdemo.StaticAudioPlayer
+import com.example.rangingdemo.audio.StaticAudioPlayer
 import kotlinx.coroutines.launch
 
 class AudioTrackViewModel: ViewModel() {

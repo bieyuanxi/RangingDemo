@@ -75,3 +75,23 @@ fun demodulate(y: Complex32Array, ZC_hat_prime: Complex32Array, N_prime: Int, f_
     return RustFFTWrapper.ifft(CFR)
 }
 
+/**
+ * 根据四个下标获取距离
+ * TODO: find better algorithm
+ * @return 返回的距离为估计值，结果为=(dAB + dBA - dAA - dBB) / 2，结果应该比实际值偏小
+ */
+fun get_distance(
+    m_aa: Int, m_ab: Int, m_bb: Int, m_ba: Int,
+    N_prime: Int, c: Float = 343.0f, N: Int, f_s: Int = 48000
+): Float {
+    val m = m_aa + m_bb - m_ab - m_ba
+    val range = c * N_prime / f_s
+
+    for (i in -2..2) {
+        val d = -(m + (i * N_prime)) * c * N / f_s / N_prime
+        if (d in 0.0f..range) {
+            return d / 2
+        }
+    }
+    return -1.0f
+}

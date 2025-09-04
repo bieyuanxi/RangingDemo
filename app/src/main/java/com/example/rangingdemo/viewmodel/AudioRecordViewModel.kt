@@ -3,7 +3,7 @@ package com.example.rangingdemo.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rangingdemo.AudioRecorder
+import com.example.rangingdemo.audio.AudioRecorder
 import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.ZC_hat_prime
 import com.example.rangingdemo.complex.Complex32Array

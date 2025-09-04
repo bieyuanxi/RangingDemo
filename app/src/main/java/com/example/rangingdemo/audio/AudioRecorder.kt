@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.audio
 
 import android.annotation.SuppressLint
 import android.media.AudioFormat
@@ -68,6 +68,7 @@ class AudioRecorder : CoroutineScope {
         job.cancel() // 彻底取消Job，避免残留
     }
 }
+
 
 @SuppressLint("MissingPermission")
 private fun createDefaultAudioRecord(sampleRate: Int): AudioRecord {

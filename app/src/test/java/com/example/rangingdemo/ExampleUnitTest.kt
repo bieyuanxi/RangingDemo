@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.*
 import java.sql.Ref
+import kotlin.math.PI
 
 interface Project {
     val name: String
@@ -41,6 +42,13 @@ class ExampleUnitTest {
     @Test
     fun test1() {
         println(get_distance(40, 145, 1337, 747, 480 * 40, N = 480 * 40))
+    }
+
+    @Test
+    fun testFormatNumber () {
+        assertEquals("3.14", formatNumber(PI))
+        assertEquals("3.14", formatNumber(PI.toFloat()))
+        assertEquals("3.00", formatNumber(PI.toInt()))
     }
 
 }

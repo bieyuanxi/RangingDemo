@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.activities
 
 import android.graphics.Color
 import android.os.Bundle
@@ -13,14 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,9 +29,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rangingdemo.CmdPing
+import com.example.rangingdemo.CmdPong
+import com.example.rangingdemo.CmdRequestArray
+import com.example.rangingdemo.CmdResponseArray
+import com.example.rangingdemo.CmdSetParams
+import com.example.rangingdemo.CmdStartPlay
+import com.example.rangingdemo.CmdStartRecord
+import com.example.rangingdemo.CmdStopPlay
+import com.example.rangingdemo.CmdStopRecord
+import com.example.rangingdemo.Message
+import com.example.rangingdemo.MpChartWithStateFlow
+import com.example.rangingdemo.N
+import com.example.rangingdemo.N_prime
+import com.example.rangingdemo.Param
+import com.example.rangingdemo.ZC_hat
+import com.example.rangingdemo.ZC_hat_prime
+import com.example.rangingdemo.complexArray2StereoFloatArray
+import com.example.rangingdemo.f_s
+import com.example.rangingdemo.get_distance
+import com.example.rangingdemo.jsonFormat
+import com.example.rangingdemo.modulate
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioProcessingParams
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
@@ -42,7 +60,6 @@ import com.example.rangingdemo.viewmodel.ClientViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +67,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 // TODO: 应该使用更好的方法
 val leftArrays = Array(10) { i ->
@@ -176,7 +192,7 @@ class RangingActivity : ComponentActivity() {
     }
 }
 
-
+// client专用
 private var f_c = mutableIntStateOf(19000)
 
 private val start_f_c = 18000

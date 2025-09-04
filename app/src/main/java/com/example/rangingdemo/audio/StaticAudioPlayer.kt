@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.audio
 
 import android.media.AudioAttributes
 import android.media.AudioFormat
