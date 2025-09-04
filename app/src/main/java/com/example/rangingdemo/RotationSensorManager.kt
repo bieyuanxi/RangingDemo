@@ -48,7 +48,7 @@ class RotationSensorManager() : SensorEventListener {
         // orientation[0] 是方位角（弧度），绕Z轴旋转
         val azimuthRadians = orientation[0]
         var azimuthDegrees = Math.toDegrees(azimuthRadians.toDouble()).toFloat()
-        Log.d("azimuthDegrees", "$azimuthDegrees")
+
         // 将角度调整到0-360度范围
         if (azimuthDegrees < 0) {
             azimuthDegrees += 360f
