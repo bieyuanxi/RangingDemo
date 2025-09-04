@@ -35,9 +35,9 @@ class ClientViewModel : ViewModel() {
             val reader = BufferedReader(InputStreamReader(socket.inputStream))
             try {
                 while (reader.readLine().also {
+                        Log.d("readLine", it)
+                        val msg = jsonFormat.decodeFromString<Message>(it)
                         withContext(Dispatchers.Main) {
-                            Log.d("readLine", it)
-                            val msg = jsonFormat.decodeFromString<Message>(it)
                             onMessageReceived?.invoke(msg)
                         }
                         _receivedMsg.value = it

@@ -24,11 +24,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rangingdemo.CmdPing
@@ -213,6 +215,8 @@ fun NewServerUI() {
     ) {
         Text("Server")
     }
+    val scope = rememberCoroutineScope()
+
 
     Row {
         Button(onClick = {
@@ -225,83 +229,100 @@ fun NewServerUI() {
         Spacer(Modifier.padding(10.dp))
         Button(
             onClick = {
-                val deviceCnt = serverViewModel.clientConnections.size
-                val paramsList = (0 until deviceCnt).map { index ->
-                    Param(48 * 40, start_f_c + step * index, 1, 37)
-                }
+                serverViewModel.performRangingJob(start_f_c, step)
 
-                serverViewModel.viewModelScope.launch {
-                    val deferredJobs = serverViewModel.clientConnections.entries.withIndex()
-                        .map { (index, entry) ->
-                            // 用async启动并行协程
-                            async(Dispatchers.IO) {
-                                serverViewModel.write(
-                                    entry.key,
-                                    jsonFormat.encodeToString(
-                                        CmdSetParams(
-                                            18000 + 1000 * index,
-                                            paramsList.toTypedArray()
-                                        ) as Message
-                                    )
-                                )
-                                delay(10)
-                            }
-                        }
-                    // 等待所有并行任务完成
-                    deferredJobs.awaitAll()
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStartRecord() as Message // 必须要转成基类
-                        )
-                    )
-                    delay(100)
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStartPlay() as Message // 必须要转成基类
-                        )
-                    )
-
-                    delay(1000)
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdRequestArray() as Message // 必须要转成基类
-                        )
-                    )
-                    delay(100)
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStopPlay() as Message // 必须要转成基类
-                        )
-                    )
-                    delay(100)
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStopRecord() as Message // 必须要转成基类
-                        )
-                    )
-
-                    delay(100)
-                    // TODO: 多设备适配
-                    distance = get_distance(
-                        m_aa = leftArrays[0][0],
-                        m_ab = leftArrays[1][0],
-                        m_ba = leftArrays[0][1],
-                        m_bb = leftArrays[1][1],
-                        N_prime = N,
-                        N = N
-                    )
-                    Log.d(
-                        "calculateResult",
-                        distance.toString()
-                    )
-                }
+//                val deviceCnt = serverViewModel.clientConnections.size
+//                val paramsList = (0 until deviceCnt).map { index ->
+//                    Param(48 * 40, start_f_c + step * index, 1, 37)
+//                }
+//
+//                serverViewModel.viewModelScope.launch {
+//                    val deferredJobs = serverViewModel.clientConnections.entries.withIndex()
+//                        .map { (index, entry) ->
+//                            // 用async启动并行协程
+//                            async(Dispatchers.IO) {
+//                                serverViewModel.write(
+//                                    entry.key,
+//                                    jsonFormat.encodeToString(
+//                                        CmdSetParams(
+//                                            18000 + 1000 * index,
+//                                            paramsList.toTypedArray()
+//                                        ) as Message
+//                                    )
+//                                )
+//                                delay(10)
+//                            }
+//                        }
+//                    // 等待所有并行任务完成
+//                    deferredJobs.awaitAll()
+//
+//                    serverViewModel.write2AllClient(
+//                        jsonFormat.encodeToString(
+//                            CmdStartRecord() as Message // 必须要转成基类
+//                        )
+//                    )
+//                    delay(100)
+//
+//                    serverViewModel.write2AllClient(
+//                        jsonFormat.encodeToString(
+//                            CmdStartPlay() as Message // 必须要转成基类
+//                        )
+//                    )
+//
+//                    delay(1000)
+//                    serverViewModel.write2AllClient(
+//                        jsonFormat.encodeToString(
+//                            CmdRequestArray() as Message // 必须要转成基类
+//                        )
+//                    )
+//                    delay(100)
+//
+//                    serverViewModel.write2AllClient(
+//                        jsonFormat.encodeToString(
+//                            CmdStopPlay() as Message // 必须要转成基类
+//                        )
+//                    )
+//                    delay(100)
+//
+//                    serverViewModel.write2AllClient(
+//                        jsonFormat.encodeToString(
+//                            CmdStopRecord() as Message // 必须要转成基类
+//                        )
+//                    )
+//
+//                    delay(100)
+//                    // TODO: 多设备适配
+//                    distance = get_distance(
+//                        m_aa = leftArrays[0][0],
+//                        m_ab = leftArrays[1][0],
+//                        m_ba = leftArrays[0][1],
+//                        m_bb = leftArrays[1][1],
+//                        N_prime = N,
+//                        N = N
+//                    )
+//                    Log.d(
+//                        "calculateResult",
+//                        distance.toString()
+//                    )
+//                }
 
             }
         ) { Text("start ranging") }
+    }
+    val cmdResponseArray by serverViewModel.receivedMsgList.collectAsStateWithLifecycle()
+    if (cmdResponseArray.size > 1) {
+        for (msg in cmdResponseArray) {
+            leftArrays[(msg.f_c - start_f_c) / 1000] = msg.array_left
+            rightArrays[(msg.f_c - start_f_c) / 1000] = msg.array_right
+        }
+        distance = get_distance(
+            m_aa = leftArrays[0][0],
+            m_ab = leftArrays[1][0],
+            m_ba = leftArrays[0][1],
+            m_bb = leftArrays[1][1],
+            N_prime = N,
+            N = N
+        )
     }
 
     Text("Server received: ${serverViewModel.receivedMsg.collectAsState().value}")
