@@ -36,6 +36,11 @@
         android:theme="@style/Theme.RangingDemo"
         tools:targetApi="31">
         <activity
+            android:name=".GvrActivity"
+            android:exported="false"
+            android:label="@string/title_activity_gvr"
+            android:theme="@style/Theme.RangingDemo" />
+        <activity
             android:name=".RangingActivity"
             android:exported="false"
             android:label="@string/title_activity_ranging"
