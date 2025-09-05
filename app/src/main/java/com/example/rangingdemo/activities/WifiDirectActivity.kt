@@ -238,20 +238,18 @@ private fun Jump2RangingActivity() {
     val wifiDirectViewModel: WifiDirectViewModel = viewModel()
     val context = LocalContext.current
 
+    val info by wifiDirectViewModel.wifiP2pInfo
     var host by remember { mutableStateOf("") }
-    var is_group_owner by remember { mutableStateOf(false) }
-    host = if (wifiDirectViewModel.wifiP2pInfo.value.groupFormed) {
-        wifiDirectViewModel.wifiP2pInfo.value.groupOwnerAddress.hostAddress
-    } else {
-        ""
+
+    if (info.groupFormed) {
+        host = info.groupOwnerAddress?.hostAddress?: ""
     }
-    is_group_owner = wifiDirectViewModel.wifiP2pInfo.value.isGroupOwner
 
     Button(
         onClick = {
             val intent = Intent(context, RangingActivity::class.java)
             intent.putExtra("host", host)
-            intent.putExtra("is_group_owner", is_group_owner)
+            intent.putExtra("is_group_owner", info.isGroupOwner)
             context.startActivity(intent)
         },
         enabled = (host != "")
