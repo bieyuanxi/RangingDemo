@@ -1,19 +1,10 @@
 package com.example.rangingdemo
 
-import android.annotation.SuppressLint
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.AudioTrack
-import android.media.AudioTrack.MODE_STATIC
-import android.media.AudioTrack.PERFORMANCE_MODE_LOW_LATENCY
-import android.media.MediaRecorder
-import android.util.Log
 import com.example.rangingdemo.complex.Complex32
 import com.example.rangingdemo.complex.Complex32Array
+import com.example.rangingdemo.lib.LibRustFFT
 import java.text.DecimalFormat
 import kotlin.math.sin
-import kotlin.system.measureNanoTime
 
 /**
  * 生成指定频率(left和right)的立体声音频
@@ -90,9 +81,7 @@ fun conjugate(array: Complex32Array): Complex32Array {
  */
 fun magnitude(array: Complex32Array): FloatArray {
     val result = FloatArray(array.size)
-    for (i in result.indices) {
-        result[i] = array[i].abs()
-    }
+    LibRustFFT.INSTANCE.magnitude32(array.inner, array.size, result)
     return result
 }
 
@@ -114,4 +103,4 @@ fun getMaxIndexedValue(array: FloatArray): Pair<Int, Float> {
 
 fun ns2ms(ns: Long) = (ns / 1_000_000.0f)
 
-fun formatNumber(number: Number) = DecimalFormat("#.00").format(number)
+fun formatNumber(number: Number): String = DecimalFormat("#.00").format(number)
