@@ -106,7 +106,7 @@ class AudioRecordViewModel : ViewModel() {
         indexList.filter { list ->
             list.isNotEmpty()
         }.flowOn(Dispatchers.IO).onEach { data ->
-            Log.d("indexList", "$data")
+            Log.d("indexListBy:f_c", "$data")
         }.launchIn(viewModelScope)
     }
 
