@@ -94,8 +94,8 @@ class RangingActivity : ComponentActivity() {
         serverViewModel.onMessageReceived = { msg ->
             when (msg) {
                 is CmdResponseArray -> {
-                    leftArrays[(msg.f_c - start_f_c) / 1000] = msg.array_left
-                    rightArrays[(msg.f_c - start_f_c) / 1000] = msg.array_right
+                    leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
+                    rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
                     Log.d(
                         "CmdResponseArrayLeft",
                         "fc: ${msg.f_c}, ${msg.array_left.contentToString()}"
@@ -230,8 +230,8 @@ fun NewServerUI() {
     val cmdResponseArray by serverViewModel.receivedMsgList.collectAsStateWithLifecycle()
     if (cmdResponseArray.size > 1) {
         for (msg in cmdResponseArray) {
-            leftArrays[(msg.f_c - start_f_c) / 1000] = msg.array_left
-            rightArrays[(msg.f_c - start_f_c) / 1000] = msg.array_right
+            leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
+            rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
         }
         distance = get_distance(
             m_aa = leftArrays[0][0],
