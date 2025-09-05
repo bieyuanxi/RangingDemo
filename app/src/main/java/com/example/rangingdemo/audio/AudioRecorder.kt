@@ -87,7 +87,7 @@ private fun createDefaultAudioRecord(sampleRate: Int): AudioRecord {
     val bufferSize: Int = (minBufferSize * 1.5).toInt()  // 似乎系统实际至少会采用1.5倍minBufferSize
     Log.d("BufferSizeInBytes", "$bufferSize")
     return AudioRecord.Builder()
-        .setAudioSource(MediaRecorder.AudioSource.UNPROCESSED)
+        .setAudioSource(MediaRecorder.AudioSource.MIC)
         .setAudioFormat(
             AudioFormat.Builder()
                 .setEncoding(audioFormat)
