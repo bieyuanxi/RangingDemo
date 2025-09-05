@@ -1,16 +1,8 @@
 package com.example.rangingdemo
 
-import android.annotation.SuppressLint
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.AudioTrack
-import android.media.AudioTrack.MODE_STATIC
-import android.media.AudioTrack.PERFORMANCE_MODE_LOW_LATENCY
-import android.media.MediaRecorder
-import android.util.Log
 import com.example.rangingdemo.complex.Complex32
 import com.example.rangingdemo.complex.Complex32Array
+import com.example.rangingdemo.lib.LibRustFFT
 import java.text.DecimalFormat
 import kotlin.math.sin
 
@@ -89,9 +81,7 @@ fun conjugate(array: Complex32Array): Complex32Array {
  */
 fun magnitude(array: Complex32Array): FloatArray {
     val result = FloatArray(array.size)
-    for (i in result.indices) {
-        result[i] = array[i].abs()
-    }
+    LibRustFFT.INSTANCE.magnitude32(array.inner, array.size, result)
     return result
 }
 
@@ -113,4 +103,19 @@ fun getMaxIndexedValue(array: FloatArray): Pair<Int, Float> {
 
 fun ns2ms(ns: Long) = (ns / 1_000_000.0f)
 
-fun formatNumber(number: Number) = DecimalFormat("#.00").format(number)
+fun formatNumber(number: Number): String = DecimalFormat("#.00").format(number)
+
+
+fun shiftLeft(x: FloatArray, shift: Int): FloatArray {
+    val n = x.size
+    var actualShift = shift % n
+    while (actualShift < 0) {
+        actualShift += n
+    }
+    val newArray = x.clone()
+    newArray.reverse(0, actualShift)
+    newArray.reverse(actualShift, n)
+    newArray.reverse()
+
+    return newArray
+}

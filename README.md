@@ -4,8 +4,8 @@
 ## 使用简单包装的rustfft库
 可直接下载已经编译好的库：
 1. 创建文件夹：`app/jniLibs`和`app/native-libs`(后者用于本地测试用例)
-2. 将[压缩文件](https://pan.baidu.com/s/1jw0eY33CJlsTDmH_7J28Sw?pwd=mfxf)解压到jniLibs目录下
-3. 库文件按照如下表示存放：
+2. 将[压缩文件(版本v0.2)](https://pan.baidu.com/s/1_6ke4sJlp7hgYhD66h0mrw?pwd=y4q3)解压到jniLibs目录下
+3. 库文件按照如下目录组织：
     ```shell
     ├───jniLibs
     │   ├───arm64-v8a

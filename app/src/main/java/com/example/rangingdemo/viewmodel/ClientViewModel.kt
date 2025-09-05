@@ -35,10 +35,10 @@ class ClientViewModel : ViewModel() {
             val reader = BufferedReader(InputStreamReader(socket.inputStream))
             try {
                 while (reader.readLine().also {
-                        withContext(Dispatchers.Main) {
-                            Log.d("readLine", it)
-                            val msg = jsonFormat.decodeFromString<Message>(it)
-                            onMessageReceived?.invoke(msg)
+                        Log.d("ClientReadLine", it)
+                        val msg = jsonFormat.decodeFromString<Message>(it)
+                        withContext(Dispatchers.Default) {
+                            onMessageReceived?.invoke(msg)  // TODO
                         }
                         _receivedMsg.value = it
                     } != null) {
