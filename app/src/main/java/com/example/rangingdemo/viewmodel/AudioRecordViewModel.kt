@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.system.measureNanoTime
+import com.example.rangingdemo.audio.HighPassFilter
 
 
 class AudioRecordViewModel : ViewModel() {
@@ -54,10 +55,13 @@ class AudioRecordViewModel : ViewModel() {
     private val _indexList = MutableStateFlow<List<Pair<Int, Int>>>(listOf())
     val indexList: StateFlow<List<Pair<Int, Int>>> = _indexList
 
+    private val filter = HighPassFilter()
+
     init {
         viewModelScope.launch {
             audioRecorder.audioDataFlow.collect { data ->
-                val (leftChannel, rightChannel) = splitStereoChannels(data)
+                val filteredData = filter.filter(data)
+                val (leftChannel, rightChannel) = splitStereoChannels(filteredData)
                 _audioChannel.value = leftChannel to rightChannel
 //                Log.d("_audioChannel", "")
             }
