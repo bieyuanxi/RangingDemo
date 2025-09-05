@@ -16,7 +16,6 @@ import com.example.rangingdemo.ns2ms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -58,16 +57,8 @@ class AudioRecordViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             audioRecorder.audioDataFlow.collect { data ->
-                val left = FloatArray(data.size / 2)
-                val right = FloatArray(data.size / 2)
-                data.forEachIndexed { index, fl ->
-                    if (index % 2 == 0) {
-                        left[index / 2] = fl
-                    } else {
-                        right[index / 2] = fl
-                    }
-                }
-                _audioChannel.value = Pair(left, right)
+                val (leftChannel, rightChannel) = splitStereoChannels(data)
+                _audioChannel.value = leftChannel to rightChannel
 //                Log.d("_audioChannel", "")
             }
         }
@@ -190,3 +181,14 @@ data class AudioProcessingParams(
     val N_prime: Int,
     val f_c: Int,
 )
+
+private fun splitStereoChannels(data: FloatArray): Pair<FloatArray, FloatArray> {
+    val sampleCount = data.size / 2
+    val left = FloatArray(sampleCount)
+    val right = FloatArray(sampleCount)
+    for (i in 0 until sampleCount) {
+        left[i] = data[i * 2]       // 左声道：索引0,2,4...
+        right[i] = data[i * 2 + 1]  // 右声道：索引1,3,5...
+    }
+    return left to right
+}
