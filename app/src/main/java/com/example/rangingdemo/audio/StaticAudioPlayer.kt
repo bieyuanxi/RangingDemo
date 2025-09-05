@@ -78,8 +78,8 @@ private fun createFloatStereoAudioTrack(sampleRate: Int): AudioTrack {
     val bufferSize = minBufferSize
     Log.d("bufferSize", "$bufferSize")
     val attributes = AudioAttributes.Builder()
-        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .setUsage(AudioAttributes.USAGE_ASSISTANT)  // TODO: 应该使用USAGE_MEDIA还是什么?
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+        .setUsage(AudioAttributes.USAGE_MEDIA)  // 影响优先级和路由
         .build()
 
     // 音频格式配置

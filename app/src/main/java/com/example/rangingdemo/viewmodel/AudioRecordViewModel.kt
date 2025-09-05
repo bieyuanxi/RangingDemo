@@ -12,10 +12,10 @@ import com.example.rangingdemo.f_s
 import com.example.rangingdemo.floatArray2ComplexArray
 import com.example.rangingdemo.getMaxIndexedValue
 import com.example.rangingdemo.magnitude
+import com.example.rangingdemo.ns2ms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -25,7 +25,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.system.measureNanoTime
+import com.example.rangingdemo.audio.HighPassFilter
 
 
 class AudioRecordViewModel : ViewModel() {
@@ -53,19 +55,14 @@ class AudioRecordViewModel : ViewModel() {
     private val _indexList = MutableStateFlow<List<Pair<Int, Int>>>(listOf())
     val indexList: StateFlow<List<Pair<Int, Int>>> = _indexList
 
+    private val filter = HighPassFilter()
+
     init {
         viewModelScope.launch {
             audioRecorder.audioDataFlow.collect { data ->
-                val left = FloatArray(data.size / 2)
-                val right = FloatArray(data.size / 2)
-                data.forEachIndexed { index, fl ->
-                    if (index % 2 == 0) {
-                        left[index / 2] = fl
-                    } else {
-                        right[index / 2] = fl
-                    }
-                }
-                _audioChannel.value = Pair(left, right)
+                val filteredData = filter.filter(data)
+                val (leftChannel, rightChannel) = splitStereoChannels(filteredData)
+                _audioChannel.value = leftChannel to rightChannel
 //                Log.d("_audioChannel", "")
             }
         }
@@ -84,7 +81,7 @@ class AudioRecordViewModel : ViewModel() {
             val timeSpent = measureNanoTime {
                 result = processInParallel(rawData, params)
             }
-            Log.d("processInParallel", "${timeSpent / 1_000_000.0}, params=${params.size}")
+            Log.d("processInParallel", "${ns2ms(timeSpent)}, params=${params.size}")
             result
         }.onEach { processedData ->
             _cirList.value = processedData
@@ -106,7 +103,7 @@ class AudioRecordViewModel : ViewModel() {
         indexList.filter { list ->
             list.isNotEmpty()
         }.flowOn(Dispatchers.IO).onEach { data ->
-            Log.d("indexList", "$data")
+            Log.d("indexListBy:f_c", "$data")
         }.launchIn(viewModelScope)
     }
 
@@ -131,28 +128,30 @@ class AudioRecordViewModel : ViewModel() {
     // 并行处理函数：接收原始数据和参数列表，返回所有处理结果
     private suspend fun processInParallel(
         rawData: Pair<FloatArray, FloatArray>, paramsList: List<AudioProcessingParams>
-    ): List<Pair<FloatArray, FloatArray>> {
+    ): List<Pair<FloatArray, FloatArray>> = withContext(Dispatchers.Default) {
+        //coroutineScope创建一个 “局部作用域”，所有子协程（async）会随该作用域的完成/取消而销毁，避免协程逃逸
+
         // 对每个参数创建一个并行任务
         val deferredList = paramsList.map { params ->
             // 用async启动并行协程，指定Dispatchers.Default处理计算密集型任务
-            viewModelScope.async(Dispatchers.Default) {
+            async {
                 processAudioData(rawData, params)
             }
         }
 
         // 等待所有并行任务完成，返回结果列表
-        return deferredList.awaitAll()
+        deferredList.awaitAll()
     }
 
 
     // 并行处理左右声道的音频数据
     private suspend fun processAudioData(
         rawData: Pair<FloatArray, FloatArray>, params: AudioProcessingParams
-    ): Pair<FloatArray, FloatArray> = coroutineScope {  // 用于管理子协程
+    ): Pair<FloatArray, FloatArray> = withContext(Dispatchers.Default) {  // 用于管理子协程
         val (leftChannel, rightChannel) = rawData
 
         // 左声道处理任务（并行）
-        val leftDeferred = async(Dispatchers.Default) {
+        val leftDeferred = async {
             val leftCir = demodulate(
                 floatArray2ComplexArray(leftChannel),
                 params.ZC_hat_prime,
@@ -164,7 +163,7 @@ class AudioRecordViewModel : ViewModel() {
         }
 
         // 右声道处理任务（并行）
-        val rightDeferred = async(Dispatchers.Default) {
+        val rightDeferred = async {
             val rightCir = demodulate(
                 floatArray2ComplexArray(rightChannel),
                 params.ZC_hat_prime,
@@ -186,3 +185,14 @@ data class AudioProcessingParams(
     val N_prime: Int,
     val f_c: Int,
 )
+
+private fun splitStereoChannels(data: FloatArray): Pair<FloatArray, FloatArray> {
+    val sampleCount = data.size / 2
+    val left = FloatArray(sampleCount)
+    val right = FloatArray(sampleCount)
+    for (i in 0 until sampleCount) {
+        left[i] = data[i * 2]       // 左声道：索引0,2,4...
+        right[i] = data[i * 2 + 1]  // 右声道：索引1,3,5...
+    }
+    return left to right
+}

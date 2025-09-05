@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
 class AudioRecorder : CoroutineScope {
@@ -42,11 +43,14 @@ class AudioRecorder : CoroutineScope {
         val buffer = FloatArray(frameLen * 2) // 立体声需要×2
         while (isRecording) {
             // 读取浮点音频数据（返回值为实际读取的样本数）
-            val readSize = audioRecord?.read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
-            if (readSize != null && readSize > 0) {
-                // 发送数据到Flow（复制一份避免缓冲区覆盖）
-                _audioDataFlow.value = buffer.copyOf(readSize)
-//                Log.d("_audioDataFlow", "$readSize")
+            audioRecord?.apply {
+                val readSize = read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
+                if (readSize == buffer.size) {
+                    // 发送数据到Flow（复制一份避免缓冲区覆盖）
+                    _audioDataFlow.value = buffer.copyOf(readSize)
+                } else {
+                    Log.d("audioRecord", "drop data cause of size: $readSize < ${buffer.size}")
+                }
             }
         }
     }
