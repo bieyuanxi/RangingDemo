@@ -40,6 +40,7 @@ import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
 import com.example.rangingdemo.CmdStartPlay
 import com.example.rangingdemo.CmdStartRecord
+import com.example.rangingdemo.CmdStop
 import com.example.rangingdemo.CmdStopPlay
 import com.example.rangingdemo.CmdStopRecord
 import com.example.rangingdemo.Message
@@ -114,22 +115,9 @@ class RangingActivity : ComponentActivity() {
         val clientViewModel: ClientViewModel by viewModels()
         clientViewModel.onMessageReceived = { msg ->
             when (msg) {
-                is CmdStartRecord -> {
-                    audioRecordViewModel.start(N)
-                }
-
-                is CmdStopRecord -> {
-                    audioRecordViewModel.stop()
-                }
-
-                is CmdStartPlay -> {
-                    val audioData = modulate(ZC_hat, N, f_c.intValue, f_s)
-                    val stereoAudioData = complexArray2StereoFloatArray(audioData)
-                    audioTrackViewModel.start(stereoAudioData, -1)
-                }
-
-                is CmdStopPlay -> {
+                is CmdStop -> {
                     audioTrackViewModel.stop()
+                    audioRecordViewModel.stop()
                 }
 
                 is CmdSetParams -> {

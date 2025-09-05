@@ -10,6 +10,7 @@ import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
 import com.example.rangingdemo.CmdStartPlay
 import com.example.rangingdemo.CmdStartRecord
+import com.example.rangingdemo.CmdStop
 import com.example.rangingdemo.CmdStopPlay
 import com.example.rangingdemo.CmdStopRecord
 import com.example.rangingdemo.Message
@@ -84,7 +85,7 @@ class ServerViewModel : ViewModel() {
 
     fun allocateParamList(deviceCnt: Int, start_f_c: Int, step: Int): List<Param> {
         val paramsList = (0 until deviceCnt).map { index ->
-            Param(f_s, start_f_c + step * index, 1, 37)
+            Param(start_f_c + step * index, 1, 37)
         }
         return paramsList
     }
@@ -102,6 +103,7 @@ class ServerViewModel : ViewModel() {
                         entry.key,
                         CmdSetParams(
                             paramsArray[index].f_c,
+                            N,
                             paramsArray
                         )
                     )
@@ -113,8 +115,7 @@ class ServerViewModel : ViewModel() {
         delay(700)
 
         write2AllClient(CmdRequestArray())
-        write2AllClient(CmdStopPlay())
-        write2AllClient(CmdStopRecord())
+        write2AllClient(CmdStop())
     }
 
     // 处理客户端消息
