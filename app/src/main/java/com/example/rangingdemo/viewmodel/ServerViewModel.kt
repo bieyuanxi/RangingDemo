@@ -105,27 +105,16 @@ class ServerViewModel : ViewModel() {
                             paramsArray
                         )
                     )
-                    Log.d("writeCmdSetParams", "CmdSetParams")
                 }
             }
         // 等待所有并行任务完成
         deferredJobs.awaitAll()
-        delay(10)
 
-        Log.d("writeCmdStartRecord", "before")
-        write2AllClient(CmdStartRecord())
-        Log.d("writeCmdStartRecord", "after")
-        write2AllClient(CmdStartPlay())
+        delay(700)
 
-        delay(1000)
         write2AllClient(CmdRequestArray())
-        delay(100)
-
         write2AllClient(CmdStopPlay())
-        delay(100)
-
         write2AllClient(CmdStopRecord())
-        delay(100)
     }
 
     // 处理客户端消息
@@ -166,9 +155,9 @@ class ServerViewModel : ViewModel() {
     fun write(clientId: String, msg: Message) = write(clientId, jsonFormat.encodeToString(msg))
 
     fun write(clientId: String, msg: String) = viewModelScope.launch(Dispatchers.IO) {
-        Log.d("beforeWriteCmd", msg)
+//        Log.d("beforeWriteCmd", msg)
         clientConnections[clientId]?.writer?.println(msg)
-        Log.d("afterWriteCmd", msg)
+//        Log.d("afterWriteCmd", msg)
     }
 
     fun write2AllClient(msg: Message) = write2AllClient(jsonFormat.encodeToString(msg))

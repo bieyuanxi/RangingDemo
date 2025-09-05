@@ -138,6 +138,12 @@ class RangingActivity : ComponentActivity() {
                         AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
                     }
                     audioRecordViewModel.setProcessingParams(params)
+
+                    audioRecordViewModel.start(N)
+
+                    val audioData = modulate(ZC_hat, N, f_c.intValue, f_s)
+                    val stereoAudioData = complexArray2StereoFloatArray(audioData)
+                    audioTrackViewModel.start(stereoAudioData, -1)
                 }
 
                 is CmdPing -> {
