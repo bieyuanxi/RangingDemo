@@ -104,3 +104,18 @@ fun getMaxIndexedValue(array: FloatArray): Pair<Int, Float> {
 fun ns2ms(ns: Long) = (ns / 1_000_000.0f)
 
 fun formatNumber(number: Number): String = DecimalFormat("#.00").format(number)
+
+
+fun shiftLeft(x: FloatArray, shift: Int): FloatArray {
+    val n = x.size
+    var actualShift = shift % n
+    while (actualShift < 0) {
+        actualShift += n
+    }
+    val newArray = x.clone()
+    newArray.reverse(0, actualShift)
+    newArray.reverse(actualShift, n)
+    newArray.reverse()
+
+    return newArray
+}
