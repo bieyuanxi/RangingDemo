@@ -191,7 +191,7 @@ class RangingActivity : ComponentActivity() {
 }
 
 // client专用
-private var f_c = mutableIntStateOf(19000)
+private var f_c = mutableIntStateOf(0)
 
 private val start_f_c = 18000
 private val step = 1000
