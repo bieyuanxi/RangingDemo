@@ -57,22 +57,17 @@ class AudioRecordViewModel : ViewModel() {
     val indexList: StateFlow<List<Pair<Int, Int>>> = _indexList
 
     init {
-        viewModelScope.launch {
-            audioRecorder.audioDataFlow.collect { data ->
-                val (leftChannel, rightChannel) = splitStereoChannels(data)
-                _audioChannel.emit(leftChannel to rightChannel)
-//                Log.d("_audioChannel", "")
-            }
-        }
+        audioRecorder.audioDataFlow.onEach { data ->
+            val (leftChannel, rightChannel) = splitStereoChannels(data)
+            _audioChannel.emit(leftChannel to rightChannel)
+        }.flowOn(Dispatchers.Default).launchIn(viewModelScope)
+
 
         // 监听原始声道数据，在后台进行处理
         // 同时监听音频数据和参数列表的变化
         combine(audioChannel, processingParams) { rawData, params ->
             // 组合数据：原始音频 + 当前参数列表
             Pair(rawData, params)
-        }.filter { (rawData, params) ->
-            val (left, right) = rawData
-            left.isNotEmpty() && right.isNotEmpty() && params.isNotEmpty()
         }.map { (rawData, params) ->
             // 并行处理所有任务
             val result: List<Pair<FloatArray, FloatArray>>
@@ -86,9 +81,7 @@ class AudioRecordViewModel : ViewModel() {
         }.flowOn(Dispatchers.Default).launchIn(viewModelScope)
 
 
-        cirList.filter { list ->
-            list.isNotEmpty()
-        }.map { list ->
+        cirList.map { list ->
             list.map { (leftCir, rightCir) ->
                 Pair(getMaxIndexedValue(leftCir).first, getMaxIndexedValue(rightCir).first)
             }
@@ -98,11 +91,9 @@ class AudioRecordViewModel : ViewModel() {
 
 
         // debug
-        indexList.filter { list ->
-            list.isNotEmpty()
-        }.flowOn(Dispatchers.IO).onEach { data ->
+        indexList.onEach { data ->
             Log.d("indexListBy:f_c", "$data")
-        }.launchIn(viewModelScope)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun start(frameLen: Int = 40 * 48) {
