@@ -21,6 +21,7 @@ import java.net.SocketException
 
 class ClientViewModel : ViewModel() {
     private var socket: Socket? = null
+    private var writer: PrintWriter? = null
 
     val isRunning = mutableStateOf(false)
     private val _receivedMsg = MutableStateFlow("")
@@ -40,6 +41,7 @@ class ClientViewModel : ViewModel() {
         socket?.let { socket ->
             Log.d("Client", "Connected to server: ${socket.inetAddress}")
             val reader = BufferedReader(InputStreamReader(socket.inputStream))
+            writer = PrintWriter(socket.outputStream, true)
             try {
                 do {
                     val json = reader.readLine()?: break
@@ -59,15 +61,17 @@ class ClientViewModel : ViewModel() {
     }
 
     fun write(msg: String) = viewModelScope.launch(Dispatchers.IO) {
-        socket?.let { socket ->
-            val writer = PrintWriter(socket.outputStream, true)
-            writer.println(msg)
-        }
+        writer?.println(msg)
+    }
+
+    fun write(msg: Message) = viewModelScope.launch(Dispatchers.IO) {
+        write(jsonFormat.encodeToString(msg))
     }
 
     fun stopClient() {
         socket?.close()
         socket = null
+        writer = null
         isRunning.value = false
     }
 }

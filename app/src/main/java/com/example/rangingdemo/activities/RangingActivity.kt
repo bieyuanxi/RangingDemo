@@ -148,12 +148,10 @@ class RangingActivity : ComponentActivity() {
                         indexList[i].second
                     }
                     clientViewModel.write(
-                        jsonFormat.encodeToString(
-                            CmdResponseArray(
-                                f_c.intValue,
-                                arrayL,
-                                arrayR
-                            ) as Message
+                        CmdResponseArray(
+                            f_c.intValue,
+                            arrayL,
+                            arrayR
                         )
                     )
                 }
@@ -165,7 +163,9 @@ class RangingActivity : ComponentActivity() {
         setContent {
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val cirList by audioRecordViewModel.cirList.collectAsStateWithLifecycle(initialValue = emptyList())
+                    val cirList by audioRecordViewModel.cirList.collectAsStateWithLifecycle(
+                        initialValue = emptyList()
+                    )
 
                     Column(modifier = Modifier.padding(innerPadding)) {
                         Column(
