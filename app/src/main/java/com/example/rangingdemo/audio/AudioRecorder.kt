@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
+import kotlin.system.measureTimeMillis
 
 class AudioRecorder : CoroutineScope {
     private val job = Job()
@@ -33,9 +34,12 @@ class AudioRecorder : CoroutineScope {
         if (isRecording) return@launch
         isRecording = true
 
-        // 初始化AudioRecord
-        audioRecord = createDefaultAudioRecord(48000)
-        audioRecord?.startRecording()
+        val timeTaken = measureTimeMillis {
+            // 初始化AudioRecord
+            audioRecord = createDefaultAudioRecord(48000)
+            audioRecord?.startRecording()
+        }
+        Log.d("audioRecordTimeTaken", "$timeTaken ms")
 
         Log.d("bufferSizeInFrames", "${audioRecord?.bufferSizeInFrames}")
         audioRecord?.let {

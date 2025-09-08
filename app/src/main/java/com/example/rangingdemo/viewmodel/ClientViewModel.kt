@@ -48,8 +48,8 @@ class ClientViewModel : ViewModel() {
                     _receivedMsg.value = json
 
                     val msg = jsonFormat.decodeFromString<Message>(json)
-                    withContext(Dispatchers.Default) {
-                        onMessageReceived?.invoke(msg)  // TODO
+                    withContext(Dispatchers.Default) { // TODO: 是否应该切换调度器，以及应该切换成什么调度器
+                        onMessageReceived?.invoke(msg)
                     }
                 } while (viewModelScope.isActive)
             } catch (e: IOException) {

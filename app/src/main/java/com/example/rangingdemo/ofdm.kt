@@ -36,7 +36,8 @@ fun modulate(ZC_hat: Complex32Array, N: Int = 960, f_c: Int = 19000, f_s: Int = 
         X[i] = X[N - i].conjugate()
     }
 
-    return RustFFTWrapper.ifft(X)
+    RustFFTWrapper.ifftInPlace(X)
+    return X
 }
 
 

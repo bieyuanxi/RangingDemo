@@ -44,7 +44,7 @@ import com.example.rangingdemo.N
 import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.ZC_hat
 import com.example.rangingdemo.ZC_hat_prime
-import com.example.rangingdemo.complexArray2StereoFloatArray
+import com.example.rangingdemo.consumeComplexArray2StereoFloatArray
 import com.example.rangingdemo.f_s
 import com.example.rangingdemo.generateSimpleStereoAudio
 import com.example.rangingdemo.modulate
@@ -68,8 +68,7 @@ class AudioActivity : ComponentActivity() {
         val audioTrackViewModel: AudioTrackViewModel by viewModels()
         val audioRecordViewModel: AudioRecordViewModel by viewModels()
 
-        val audioData = modulate(ZC_hat, N, f_c, f_s)
-        val stereoAudioData = complexArray2StereoFloatArray(audioData)
+        val stereoAudioData = consumeComplexArray2StereoFloatArray(modulate(ZC_hat, N, f_c, f_s))
 
         audioRecordViewModel.setProcessingParams(listOf(AudioProcessingParams(ZC_hat_prime, N_prime, f_c)))
 

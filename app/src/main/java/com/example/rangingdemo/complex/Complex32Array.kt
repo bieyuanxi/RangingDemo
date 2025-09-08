@@ -5,7 +5,7 @@ package com.example.rangingdemo.complex
  *
  * 内存布局：[[real0, imag0, real1, imag1, ...]]
  */
-class Complex32Array(val size: Int) {
+class Complex32Array(var size: Int) {
     //两倍空间交替存储real部分和imag部分
     var inner = FloatArray(size shl 1)
 
@@ -58,6 +58,11 @@ class Complex32Array(val size: Int) {
         val result = Complex32Array(size)
         result.inner = inner.copyOf()
         return result
+    }
+
+    fun clear() {
+        inner = FloatArray(0)
+        size = 0
     }
 }
 

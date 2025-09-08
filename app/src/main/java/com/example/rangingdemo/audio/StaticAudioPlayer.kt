@@ -26,9 +26,7 @@ class StaticAudioPlayer : CoroutineScope {
     // stereoAudioData: 立体声，双声道
     fun startPlay(stereoAudioData: FloatArray, loopCount: Int = 0) = launch {
         val timeTaken = measureTimeMillis {
-            launch {    // 创建一个协程停止可能存在的播放资源
-                stop()
-            }.join()  //等待协程完成
+            stop()  // 停止可能存在的播放资源
 
             audioTrack = createFloatStereoAudioTrack(sampleRate = 48000)
             audioTrack?.let {
@@ -76,7 +74,7 @@ private fun createFloatStereoAudioTrack(sampleRate: Int): AudioTrack {
 //        // 实时流缓冲区：最小缓冲区的2倍（平衡延迟和稳定性）
 //        val bufferSize = maxOf(minBufferSize, 2048)
     val bufferSize = minBufferSize
-    Log.d("bufferSize", "$bufferSize")
+    Log.d("AudioTrackBufferSize", "$bufferSize")
     val attributes = AudioAttributes.Builder()
         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
         .setUsage(AudioAttributes.USAGE_MEDIA)  // 影响优先级和路由

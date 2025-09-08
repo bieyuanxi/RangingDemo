@@ -50,7 +50,8 @@ import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.Param
 import com.example.rangingdemo.ZC_hat
 import com.example.rangingdemo.ZC_hat_prime
-import com.example.rangingdemo.complexArray2StereoFloatArray
+import com.example.rangingdemo.complex.Complex32Array
+import com.example.rangingdemo.consumeComplexArray2StereoFloatArray
 import com.example.rangingdemo.f_s
 import com.example.rangingdemo.get_distance
 import com.example.rangingdemo.jsonFormat
@@ -71,6 +72,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlin.system.measureTimeMillis
 
 // TODO: 应该使用更好的方法
 val leftArrays = Array(10) { i ->
@@ -123,16 +125,26 @@ class RangingActivity : ComponentActivity() {
 
                 is CmdSetParams -> {
                     f_c.intValue = msg.f_c
+
                     val params = msg.params.map { param ->
                         AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
                     }
                     audioRecordViewModel.setProcessingParams(params)
+                    audioRecordViewModel.start(frameLen = N)
 
-                    audioRecordViewModel.start(N)
+                    val timeTaken1 = measureTimeMillis {
+                        val stereoAudioData: FloatArray = consumeComplexArray2StereoFloatArray(
+                            modulate(
+                                ZC_hat,
+                                N,
+                                f_c.intValue,
+                                f_s
+                            )
+                        )
+                        audioTrackViewModel.start(stereoAudioData, -1)
+                    }
 
-                    val audioData = modulate(ZC_hat, N, f_c.intValue, f_s)
-                    val stereoAudioData = complexArray2StereoFloatArray(audioData)
-                    audioTrackViewModel.start(stereoAudioData, -1)
+                    Log.d("CmdSetParamsTimeTaken", "$timeTaken1 ms")
                 }
 
                 is CmdPing -> {
