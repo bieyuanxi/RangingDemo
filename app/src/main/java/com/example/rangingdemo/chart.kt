@@ -33,7 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 @Composable
 fun MpChartWithStateFlow(
     f_c: Int,
-    cirListStateFlow: StateFlow<List<Pair<FloatArray, FloatArray>>>,
+    cirList: List<Pair<FloatArray, FloatArray>>,
     viewModel: AudioRecordViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -75,7 +75,6 @@ fun MpChartWithStateFlow(
         }
     }
 
-    val cirList by cirListStateFlow.collectAsStateWithLifecycle()
     val lineDataSetList = remember { mutableStateListOf<LineDataSet>() }
 
     LaunchedEffect(cirList, isLeftVisibleList.toList(), isRightVisibleList.toList()) {

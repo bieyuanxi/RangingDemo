@@ -8,7 +8,9 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,8 +26,8 @@ class AudioRecorder : CoroutineScope {
     private var isRecording = false
 
     // 音频数据Flow（对外暴露不可变Flow）
-    private val _audioDataFlow = MutableStateFlow(floatArrayOf())
-    val audioDataFlow: StateFlow<FloatArray> = _audioDataFlow
+    private val _audioDataFlow = MutableSharedFlow<FloatArray>()
+    val audioDataFlow: SharedFlow<FloatArray> = _audioDataFlow
 
     fun startRecording(frameLen: Int = 40 * 48) = launch {
         if (isRecording) return@launch
@@ -47,7 +49,7 @@ class AudioRecorder : CoroutineScope {
                 val readSize = read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
                 if (readSize == buffer.size) {
                     // 发送数据到Flow（复制一份避免缓冲区覆盖）
-                    _audioDataFlow.value = buffer.copyOf(readSize)
+                    _audioDataFlow.emit(buffer.copyOf(readSize))
                 } else {
                     Log.d("audioRecord", "drop data cause of size: $readSize < ${buffer.size}")
                 }

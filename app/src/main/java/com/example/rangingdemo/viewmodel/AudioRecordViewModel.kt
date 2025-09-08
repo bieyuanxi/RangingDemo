@@ -16,7 +16,9 @@ import com.example.rangingdemo.ns2ms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
@@ -32,8 +34,8 @@ import kotlin.system.measureNanoTime
 class AudioRecordViewModel : ViewModel() {
     private val audioRecorder = AudioRecorder()
 
-    private val _audioChannel = MutableStateFlow(Pair(floatArrayOf(), floatArrayOf()))
-    val audioChannel: StateFlow<Pair<FloatArray, FloatArray>> = _audioChannel
+    private val _audioChannel = MutableSharedFlow<Pair<FloatArray, FloatArray>>()
+    val audioChannel: SharedFlow<Pair<FloatArray, FloatArray>> = _audioChannel
 
     // 可动态修改的参数列表
     private val _processingParams = MutableStateFlow(
@@ -47,8 +49,8 @@ class AudioRecordViewModel : ViewModel() {
     val processingParams: StateFlow<List<AudioProcessingParams>> = _processingParams
 
     // cir list
-    private val _cirList = MutableStateFlow<List<Pair<FloatArray, FloatArray>>>(listOf())
-    val cirList: StateFlow<List<Pair<FloatArray, FloatArray>>> = _cirList
+    private val _cirList = MutableSharedFlow<List<Pair<FloatArray, FloatArray>>>()
+    val cirList: SharedFlow<List<Pair<FloatArray, FloatArray>>> = _cirList
 
     // 处理后的结果: 峰值下标列表
     private val _indexList = MutableStateFlow<List<Pair<Int, Int>>>(listOf())
@@ -58,7 +60,7 @@ class AudioRecordViewModel : ViewModel() {
         viewModelScope.launch {
             audioRecorder.audioDataFlow.collect { data ->
                 val (leftChannel, rightChannel) = splitStereoChannels(data)
-                _audioChannel.value = leftChannel to rightChannel
+                _audioChannel.emit(leftChannel to rightChannel)
 //                Log.d("_audioChannel", "")
             }
         }
@@ -80,7 +82,7 @@ class AudioRecordViewModel : ViewModel() {
             Log.d("processInParallel", "${ns2ms(timeSpent)}, params=${params.size}")
             result
         }.onEach { processedData ->
-            _cirList.value = processedData
+            _cirList.emit(processedData)
         }.flowOn(Dispatchers.Default).launchIn(viewModelScope)
 
 
@@ -91,7 +93,7 @@ class AudioRecordViewModel : ViewModel() {
                 Pair(getMaxIndexedValue(leftCir).first, getMaxIndexedValue(rightCir).first)
             }
         }.onEach { data ->
-            _indexList.value = data
+            _indexList.emit(data)
         }.flowOn(Dispatchers.Default).launchIn(viewModelScope)
 
 

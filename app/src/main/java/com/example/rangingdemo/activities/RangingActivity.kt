@@ -69,6 +69,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 // TODO: 应该使用更好的方法
@@ -164,6 +165,7 @@ class RangingActivity : ComponentActivity() {
         setContent {
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val cirList by audioRecordViewModel.cirList.collectAsStateWithLifecycle(initialValue = emptyList())
 
                     Column(modifier = Modifier.padding(innerPadding)) {
                         Column(
@@ -179,7 +181,7 @@ class RangingActivity : ComponentActivity() {
 
                         NewClientUI(host)
                         HorizontalDivider(thickness = 2.dp)
-                        MpChartWithStateFlow(f_c = f_c.intValue, audioRecordViewModel.cirList)
+                        MpChartWithStateFlow(f_c = f_c.intValue, cirList)
 //                        StateFlow2()
                     }
                 }

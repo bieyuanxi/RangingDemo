@@ -7,7 +7,7 @@ import android.hardware.SensorManager
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import com.example.rangingdemo.RotationSensorManager
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 class RotationAngleViewModel(application: Application): AndroidViewModel(application) {
     private val appContext: Context
@@ -17,7 +17,7 @@ class RotationAngleViewModel(application: Application): AndroidViewModel(applica
     private var rotationSensor: Sensor? = null
     private val rotationSensorManager = RotationSensorManager()
 
-    val rotationAngle: StateFlow<Float> = rotationSensorManager.rotationAngle
+    val rotationAngle: SharedFlow<Float> = rotationSensorManager.rotationAngle
 
     /**
      * 初始化并立刻开始监听

@@ -77,6 +77,7 @@ class AudioActivity : ComponentActivity() {
         setContent {
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val cirList by audioRecordViewModel.cirList.collectAsStateWithLifecycle(initialValue = emptyList())
                     Column(modifier = Modifier.padding(innerPadding)) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -107,7 +108,7 @@ class AudioActivity : ComponentActivity() {
                         HorizontalDivider(thickness = 2.dp)
                         Column {
                             Text("MpChart")
-                            MpChartWithStateFlow(f_c, audioRecordViewModel.cirList)
+                            MpChartWithStateFlow(f_c, cirList)
                         }
                     }
                 }

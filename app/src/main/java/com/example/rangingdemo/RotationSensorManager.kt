@@ -1,18 +1,21 @@
 package com.example.rangingdemo
 
-import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.util.Log
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 
 class RotationSensorManager() : SensorEventListener {
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     // 角度数据Flow
-    private val _rotationAngle = MutableStateFlow(0f)
-    val rotationAngle: StateFlow<Float> = _rotationAngle
+    private val _rotationAngle = MutableSharedFlow<Float>()
+    val rotationAngle: SharedFlow<Float> = _rotationAngle
 
     // 用于平滑处理的滑动窗口
     private val angleWindow = mutableListOf<Float>()
@@ -72,9 +75,11 @@ class RotationSensorManager() : SensorEventListener {
             angleWindow.removeAt(0)
         }
 
-        // 计算窗口平均值并更新Flow
-        val smoothedAngle = angleWindow.average().toFloat()
-        _rotationAngle.value = smoothedAngle
+        coroutineScope.launch {
+            // 计算窗口平均值并更新Flow
+            val smoothedAngle = angleWindow.average().toFloat()
+            _rotationAngle.emit(smoothedAngle)
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
