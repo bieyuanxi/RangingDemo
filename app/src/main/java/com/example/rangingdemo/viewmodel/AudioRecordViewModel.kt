@@ -1,6 +1,7 @@
 package com.example.rangingdemo.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rangingdemo.audio.AudioRecorder
@@ -33,6 +34,8 @@ import kotlin.system.measureNanoTime
 
 class AudioRecordViewModel : ViewModel() {
     private val audioRecorder = AudioRecorder()
+
+    var stopUpdate = false
 
     private val _audioChannel = MutableSharedFlow<Pair<FloatArray, FloatArray>>()
     val audioChannel: SharedFlow<Pair<FloatArray, FloatArray>> = _audioChannel
@@ -68,6 +71,8 @@ class AudioRecordViewModel : ViewModel() {
         combine(audioChannel, processingParams) { rawData, params ->
             // 组合数据：原始音频 + 当前参数列表
             Pair(rawData, params)
+        }.filter {
+            !stopUpdate // 停止更新信息
         }.map { (rawData, params) ->
             // 并行处理所有任务
             val result: List<Pair<FloatArray, FloatArray>>
@@ -97,6 +102,7 @@ class AudioRecordViewModel : ViewModel() {
     }
 
     fun start(frameLen: Int = 40 * 48) {
+        stopUpdate = false
         viewModelScope.launch {
             audioRecorder.startRecording(frameLen)
         }

@@ -153,6 +153,7 @@ class RangingActivity : ComponentActivity() {
 
                 is CmdRequestArray -> {
                     val indexList = audioRecordViewModel.indexList.value
+                    audioRecordViewModel.stopUpdate = true  // 上传数据时停止更新，保持当前数据状态
                     val arrayL = IntArray(indexList.size) { i ->
                         indexList[i].first
                     }
@@ -284,7 +285,7 @@ fun NewClientUI(host: String) {
         }
     }) { Text(if (!isClientRunning) "start client" else "stop client") }
     Text("fc = $f_c")
-    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
+//    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
 }
 
 
