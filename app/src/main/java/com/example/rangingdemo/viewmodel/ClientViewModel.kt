@@ -9,9 +9,11 @@ import com.example.rangingdemo.jsonFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
@@ -29,22 +31,27 @@ class ClientViewModel : ViewModel() {
 
     fun startClient(host: String, port: Int = 8888) = viewModelScope.launch(Dispatchers.IO) {
         isRunning.value = true
-        socket = Socket(host, port)
+        try {
+            socket = Socket(host, port)
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
         socket?.let { socket ->
             Log.d("Client", "Connected to server: ${socket.inetAddress}")
             val reader = BufferedReader(InputStreamReader(socket.inputStream))
             try {
-                while (reader.readLine().also {
-                        Log.d("ClientReadLine", it)
-                        val msg = jsonFormat.decodeFromString<Message>(it)
-                        withContext(Dispatchers.Default) {
-                            onMessageReceived?.invoke(msg)  // TODO
-                        }
-                        _receivedMsg.value = it
-                    } != null) {
-                }
-            } catch (e: SocketException) {
+                do {
+                    val json = reader.readLine()?: break
+                    _receivedMsg.value = json
 
+                    val msg = jsonFormat.decodeFromString<Message>(json)
+                    withContext(Dispatchers.Default) {
+                        onMessageReceived?.invoke(msg)  // TODO
+                    }
+                } while (viewModelScope.isActive)
+            } catch (e: IOException) {
+                e.printStackTrace()
             }
 
             Log.d("Client", "disconnected.")
