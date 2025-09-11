@@ -115,6 +115,7 @@ class ServerViewModel : ViewModel() {
         delay(700)
 
         write2AllClient(CmdRequestArray())
+        delay(200)
         write2AllClient(CmdStop())
     }
 

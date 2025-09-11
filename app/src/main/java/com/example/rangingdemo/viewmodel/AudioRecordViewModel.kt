@@ -88,7 +88,10 @@ class AudioRecordViewModel : ViewModel() {
 
         cirList.map { list ->
             list.map { (leftCir, rightCir) ->
-                Pair(getMaxIndexedValue(leftCir).first, getMaxIndexedValue(rightCir).first)
+                val leftIndexValue = getMaxIndexedValue(leftCir)
+                val rightIndexValue = getMaxIndexedValue(rightCir)
+                Log.d("indexValue", "L: $leftIndexValue, R: $rightIndexValue")
+                Pair(leftIndexValue.first, rightIndexValue.first)
             }
         }.onEach { data ->
             _indexList.emit(data)

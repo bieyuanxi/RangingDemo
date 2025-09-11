@@ -249,10 +249,10 @@ fun NewServerUI() {
             rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
         }
         distance = get_distance(
-            m_aa = leftArrays[0][0],
-            m_ab = leftArrays[1][0],
-            m_ba = leftArrays[0][1],
-            m_bb = leftArrays[1][1],
+            m_aa = rightArrays[0][0],
+            m_ab = rightArrays[1][0],
+            m_ba = rightArrays[0][1],
+            m_bb = rightArrays[1][1],
             N_prime = N,
             N = N
         )
