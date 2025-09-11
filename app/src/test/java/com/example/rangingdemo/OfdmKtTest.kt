@@ -5,6 +5,7 @@ import com.example.rangingdemo.lib.RustFFTWrapper
 import org.junit.Test
 
 import org.junit.Assert.*
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.system.measureTimeMillis
 
@@ -51,6 +52,12 @@ class OfdmKtTest {
         val (index, value) = getMaxIndexedValue(mag)
         println(Pair(index, value))
         assertEquals(N_prime, shift + index)
+    }
+
+    @Test
+    fun testGetRadians() {
+        val radians = getRadians(3.0, 3.0, PI / 2, 3.0);
+        assertEquals(true, abs(radians - PI / 4) < 1e-10)
     }
 
 //    @Test
