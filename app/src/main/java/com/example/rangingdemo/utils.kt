@@ -52,6 +52,9 @@ fun consumeComplexArray2StereoFloatArray(array: Complex32Array, leftRate: Float 
 
     for (i in stereoAudioData.indices.step(2)) {
         stereoAudioData[i + 1] = stereoAudioData[i]
+
+        stereoAudioData[i] = leftRate * stereoAudioData[i]
+        stereoAudioData[i + 1] = rightRate * stereoAudioData[i + 1]
     }
     return stereoAudioData
 }

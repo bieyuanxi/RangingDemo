@@ -7,6 +7,10 @@ import org.junit.Test
 import org.junit.Assert.*
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
 class OfdmKtTest {
@@ -58,6 +62,26 @@ class OfdmKtTest {
     fun testGetRadians() {
         val radians = getRadians(3.0, 3.0, PI / 2, 3.0);
         assertEquals(true, abs(radians - PI / 4) < 1e-10)
+    }
+
+    @Test
+    fun testGetRadians1() {
+        val radians = getRadians(sqrt(10.0), 4.0, PI / 2, 3.0);
+        assertEquals(true, abs(cos(radians) - 0.8) < 1e-10)
+    }
+
+    @Test
+    fun testGetRadians2() {
+        val radians = getRadians(sqrt(3.0), 1.0, PI / 3, 1.0)
+        println(radians*180/ PI)
+        assertEquals(true, abs(radians - PI / 3) < 1e-10)
+    }
+
+    @Test
+    fun testGetRadians3() {
+        val radians = getRadians(2.0, 2.04, PI / 3, 0.08)
+        println(radians*180/ PI)
+        assertEquals(true, abs(radians - PI / 6) < 1e-10)
     }
 
 //    @Test

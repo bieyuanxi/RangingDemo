@@ -134,13 +134,13 @@ fun getRadians(m: Double, n: Double, radians: Double, lenOfPhone: Double = 0.08)
     if (delta < 0) {
         return 0.0
     }
-    val x1 = (-b + sqrt(delta))/(2*a)
-    val x2 = (-b - sqrt(delta))/(2*a)
-    val y1 = x1 * sinPhi / (1 - cosPhi) + (n.pow(2) - m.pow(2))/(2*lenOfPhone*(1 - cosPhi))
-    val y2 = x2 * sinPhi / (1 - cosPhi) + (n.pow(2) - m.pow(2))/(2*lenOfPhone*(1 - cosPhi))
+    val y1 = (-b + sqrt(delta))/(2*a)
+    val y2 = (-b - sqrt(delta))/(2*a)
+    val x1 = y1 * (1 - cosPhi) / sinPhi + (m.pow(2) - n.pow(2))/(2*lenOfPhone*sinPhi)
+    val x2 = y2 * (1 - cosPhi) / sinPhi + (m.pow(2) - n.pow(2))/(2*lenOfPhone*sinPhi)
     println(Pair(x1, y1))
     println(Pair(x2, y2))
-    if(y1 < 0) {
+    if(y1 < lenOfPhone || y1 > m + lenOfPhone) {
         return atan2(x2, y2)
     }
     return atan2(x1, y1)
