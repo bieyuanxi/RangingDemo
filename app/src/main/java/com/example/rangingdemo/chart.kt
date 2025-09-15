@@ -38,6 +38,7 @@ fun MpChartWithStateFlow(
     modifier: Modifier = Modifier
 ) {
     val processingParams by viewModel.processingParams.collectAsStateWithLifecycle()
+    val indexList by viewModel.indexList.collectAsStateWithLifecycle()
     var redIndex by remember { mutableIntStateOf(0) }
 
     val isLeftVisibleList = remember(processingParams) {
@@ -69,12 +70,20 @@ fun MpChartWithStateFlow(
             if (params.f_c == f_c) {
                 redIndex = i
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("f_c=${params.f_c} ")
-                Text("lChannel")
-                Checkbox(checked = isLeftVisibleList[i], onCheckedChange = { isLeftVisibleList[i] = it })
-                Text("rChannel")
-                Checkbox(checked = isRightVisibleList[i], onCheckedChange = { isRightVisibleList[i] = it })
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("f_c=${params.f_c} ")
+                    Text("lChannel")
+                    Checkbox(checked = isLeftVisibleList[i], onCheckedChange = { isLeftVisibleList[i] = it })
+                    Text("rChannel")
+                    Checkbox(checked = isRightVisibleList[i], onCheckedChange = { isRightVisibleList[i] = it })
+                }
+                if(indexList.isNotEmpty()) {
+                    Text("mL: ${indexList[i].first}")
+                    Text("mR: ${indexList[i].second}")
+                    Text("delta: ${indexList[i].first.second - indexList[i].second.second}")
+                }
+
             }
         }
     }
@@ -116,16 +125,6 @@ fun MpChartWithStateFlow(
             lineDataSetList.add(lDataSet)
             lineDataSetList.add(rDataSet)
         }
-    }
-
-    // TODO: 索引展示
-    var leftPeekIndex by remember { mutableIntStateOf(0) }
-    var rightPeekIndex by remember { mutableIntStateOf(0) }
-
-    Row {
-        Text("mL: $leftPeekIndex")
-        Spacer(modifier = Modifier.width(5.dp))
-        Text("mR: $rightPeekIndex")
     }
 
     AndroidView(

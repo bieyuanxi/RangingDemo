@@ -155,10 +155,10 @@ class RangingActivity : ComponentActivity() {
                     val indexList = audioRecordViewModel.indexList.value
                     audioRecordViewModel.stopUpdate = true  // 上传数据时停止更新，保持当前数据状态
                     val arrayL = IntArray(indexList.size) { i ->
-                        indexList[i].first
+                        indexList[i].first.first
                     }
                     val arrayR = IntArray(indexList.size) { i ->
-                        indexList[i].second
+                        indexList[i].second.first
                     }
                     clientViewModel.write(
                         CmdResponseArray(
@@ -275,7 +275,7 @@ fun NewClientUI(host: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Client")
+        Text("Client(fc = $f_c)")
     }
     Button(onClick = {
         if (isClientRunning) {
@@ -284,7 +284,6 @@ fun NewClientUI(host: String) {
             clientViewModel.startClient(host)
         }
     }) { Text(if (!isClientRunning) "start client" else "stop client") }
-    Text("fc = $f_c")
 //    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
 }
 
