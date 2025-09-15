@@ -37,6 +37,7 @@ class DebugActivity : ComponentActivity() {
                         OfdmUIBtn()
                         WifiDirectUIBtn()
                         GrvUIButton()
+                        AngleUIBtn()
                     }
 
                 }

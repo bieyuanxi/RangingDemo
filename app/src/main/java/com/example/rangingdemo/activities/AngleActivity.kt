@@ -14,31 +14,25 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rangingdemo.ui.theme.RangingDemoTheme
+import com.example.rangingdemo.activities.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 
-
-class GvrActivity : ComponentActivity() {
-
-
+class AngleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         enableEdgeToEdge()
         setContent {
-
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Column(modifier = Modifier.padding(innerPadding)) {
-                        Grv()
+                        Greeting4()
                     }
 
                 }
@@ -48,20 +42,7 @@ class GvrActivity : ComponentActivity() {
 }
 
 @Composable
-fun GrvUIButton() {
-    val context = LocalContext.current
-    Button(
-        onClick = {
-            val intent = Intent(context, GvrActivity::class.java)
-            context.startActivity(intent)
-        }
-    ) {
-        Text("GrvActivity")
-    }
-}
-
-@Composable
-fun Grv() {
+fun Greeting4() {
     val rotationAngleViewModel: RotationAngleViewModel = viewModel()
     val angle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
 
@@ -71,10 +52,23 @@ fun Grv() {
     ) {
         Text("Game Rotation Vector Sensor")
     }
-    Text("range=(-180°, 180°), angle = $angle°")
+    Text("range=(-180°, 180°)")
+    Text("angle(degree) = $angle")
     Button(onClick = {
         rotationAngleViewModel.calibrate()
     }) { Text("calibrate") }
 }
 
-
+// AngleActivity debug UI
+@Composable
+fun AngleUIBtn() {
+    val context = LocalContext.current
+    Button(
+        onClick = {
+            val intent = Intent(context, AngleActivity::class.java)
+            context.startActivity(intent)
+        }
+    ) {
+        Text("AngleActivity")
+    }
+}

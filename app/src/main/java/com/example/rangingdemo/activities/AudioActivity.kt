@@ -84,7 +84,7 @@ class AudioActivity : ComponentActivity() {
                         ) {
                             Text("Audio Track & Record Activity")
                         }
-                        Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("fixed freq AudioPlayer")
                             AudioPlayerUI(
                                 stereoAudioData = generateSimpleStereoAudio(
@@ -96,16 +96,18 @@ class AudioActivity : ComponentActivity() {
                             )
                         }
                         HorizontalDivider(thickness = 2.dp)
-                        Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Modulated AudioPlayer")
                             AudioPlayerUI(stereoAudioData = stereoAudioData)
                         }
-                        Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("AudioRecorder")
                             AudioRecorderUI(frameLen = N)
                         }
                         HorizontalDivider(thickness = 2.dp)
-                        Column {
+                        Grv()
+                        HorizontalDivider(thickness = 2.dp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("MpChart")
                             MpChartWithStateFlow(f_c, cirList)
                         }
