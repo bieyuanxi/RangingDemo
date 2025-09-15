@@ -139,7 +139,9 @@ class RangingActivity : ComponentActivity() {
                                 N,
                                 f_c.intValue,
                                 f_s
-                            )
+                            ),
+                            leftRate = 10.0f,
+                            rightRate = 10.0f
                         )
                         audioTrackViewModel.start(stereoAudioData, -1)
                     }

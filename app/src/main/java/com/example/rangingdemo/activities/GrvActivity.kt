@@ -71,7 +71,7 @@ fun Grv() {
     ) {
         Text("Game Rotation Vector Sensor")
     }
-    Text("range=(-180°, 180°), angle = $angle°")
+    Text("range=(-180°, 180°), angle = %.1f°".format(angle))
     Button(onClick = {
         rotationAngleViewModel.calibrate()
     }) { Text("calibrate") }

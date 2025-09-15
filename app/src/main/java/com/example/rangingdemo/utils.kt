@@ -1,5 +1,6 @@
 package com.example.rangingdemo
 
+import android.util.Log
 import com.example.rangingdemo.complex.Complex32
 import com.example.rangingdemo.complex.Complex32Array
 import com.example.rangingdemo.lib.LibRustFFT
@@ -35,7 +36,7 @@ fun generateSimpleStereoAudio(
 
         time += timeStep
     }
-
+    Log.d("simpleStereoAudio", getMaxIndexedValue(pcmData).toString())
     return pcmData
 }
 
@@ -56,6 +57,7 @@ fun consumeComplexArray2StereoFloatArray(array: Complex32Array, leftRate: Float 
         stereoAudioData[i] = leftRate * stereoAudioData[i]
         stereoAudioData[i + 1] = rightRate * stereoAudioData[i + 1]
     }
+    Log.d("stereoAudioData", "${getMaxIndexedValue(stereoAudioData)}")
     return stereoAudioData
 }
 
