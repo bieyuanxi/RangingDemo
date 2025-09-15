@@ -15,6 +15,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,8 +33,7 @@ class GvrActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            val angle = rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
-
+            val angle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Column(modifier = Modifier.padding(innerPadding)) {
@@ -43,7 +44,7 @@ class GvrActivity : ComponentActivity() {
                             Text("Game Rotation Vector Sensor")
                         }
                         Text("range=(-180°, 180°)")
-                        Text("angle(degree) = ${angle.value}")
+                        Text("angle(degree) = $angle")
                         Button(onClick = {
                             rotationAngleViewModel.calibrate()
                         }) { Text("calibrate") }
