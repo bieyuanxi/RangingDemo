@@ -109,9 +109,13 @@ class AudioRecordViewModel : ViewModel() {
     }
 
     fun stop() {
-        viewModelScope.launch {
-            audioRecorder.stopRecording()
-        }
+        audioRecorder.stopRecording()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+
+        stop()
     }
 
     // 设置参数

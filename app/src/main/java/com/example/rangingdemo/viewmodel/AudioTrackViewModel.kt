@@ -23,9 +23,7 @@ class AudioTrackViewModel: ViewModel() {
      * 停止音频播放
      */
     fun stop() {
-        viewModelScope.launch {
-            audioPlayer.stop()
-        }
+        audioPlayer.stop()
     }
 
 
@@ -35,5 +33,7 @@ class AudioTrackViewModel: ViewModel() {
      */
     override fun onCleared() {
         super.onCleared()
+
+        stop()
     }
 }
