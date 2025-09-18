@@ -42,15 +42,15 @@ import kotlinx.coroutines.delay
 @Composable
 fun RotatePhoneDialog(
     isShowing: Boolean,
-    rotationProgress: Int,
+    rotationProgress: Float,
     onDismiss: () -> Unit
 ) {
     var isCompleted by remember { mutableStateOf(false) } // 是否旋转完成
-    var progress by remember { mutableIntStateOf(0) }
+    var progress by remember { mutableFloatStateOf(0f) }
 
     if (isCompleted) {
         LaunchedEffect(Unit) {
-            progress = 360
+            progress = 360f
             delay(1500)
             onDismiss()
         }
@@ -61,12 +61,12 @@ fun RotatePhoneDialog(
 
         // 设置两个检查点180~190度和0~10度，只有在180~190度先激活后，再激活0~10度的情况下才认为旋转完整一圈
         var check by remember { mutableStateOf(false) }
-        if(progress in 180..190) {
+        if(progress in 180f..190f) {
             check = true
         }
 
         // 旋转进度达到第二个检查点，标记完成并关闭
-        if (check && progress in 0..10) {
+        if (check && progress in 0f..10f) {
             isCompleted = true
         }
     }

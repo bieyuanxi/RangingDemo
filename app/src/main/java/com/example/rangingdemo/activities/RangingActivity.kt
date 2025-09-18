@@ -292,7 +292,6 @@ fun AngleUI() {
 
     // 旋转提示弹窗
     if (isDialogShowing) {
-        val angle = angle.toInt()
         RotatePhoneDialog(
             isShowing = isDialogShowing,
             rotationProgress = if (angle < 0) 360 + angle else angle,
