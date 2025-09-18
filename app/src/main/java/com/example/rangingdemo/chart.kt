@@ -58,11 +58,7 @@ fun MpChartWithStateFlow(
     }
 
     val fcList = remember(processingParams) {
-        buildList {
-            processingParams.forEach {
-                add(it.f_c)
-            }
-        }
+        processingParams.map { it.f_c }
     }
 
     Column {
@@ -74,11 +70,16 @@ fun MpChartWithStateFlow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("f_c=${params.f_c} ")
                     Text("lChannel")
-                    Checkbox(checked = isLeftVisibleList[i], onCheckedChange = { isLeftVisibleList[i] = it })
+                    Checkbox(
+                        checked = isLeftVisibleList[i],
+                        onCheckedChange = { isLeftVisibleList[i] = it })
                     Text("rChannel")
-                    Checkbox(checked = isRightVisibleList[i], onCheckedChange = { isRightVisibleList[i] = it })
+                    Checkbox(
+                        checked = isRightVisibleList[i],
+                        onCheckedChange = { isRightVisibleList[i] = it })
                 }
-                if(indexList.isNotEmpty()) {
+                // TODO: 使用更好的策略
+                if (indexList.size == processingParams.size) {  // 防止状态不同步
                     Text("mL: ${indexList[i].first}")
                     Text("mR: ${indexList[i].second}")
                     Text("delta: ${indexList[i].first.second - indexList[i].second.second}")
@@ -95,6 +96,11 @@ fun MpChartWithStateFlow(
             it.clear()  // 释放LineDataSet持有的entries
         }
         lineDataSetList.clear() // 清空数据
+
+        // TODO: 使用更好的策略
+        if (cirList.size != isLeftVisibleList.size) {   // 防止状态不同步
+            return@LaunchedEffect
+        }
 
         cirList.forEachIndexed { index, pair ->
             // TODO: 减少对象分配频率

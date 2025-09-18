@@ -9,6 +9,9 @@ import com.example.rangingdemo.jsonFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -17,7 +20,6 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
-import java.net.SocketException
 
 class ClientViewModel : ViewModel() {
     private var socket: Socket? = null
@@ -25,7 +27,14 @@ class ClientViewModel : ViewModel() {
 
     val isRunning = mutableStateOf(false)
     private val _receivedMsg = MutableStateFlow("")
-    val receivedMsg: StateFlow<String> = _receivedMsg
+    private val receivedMsg: StateFlow<String> = _receivedMsg
+
+    init {
+        // debug
+        receivedMsg.onEach { msg ->
+            Log.d("clientReceivedMsg", msg)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+    }
 
     // 消息监听
     var onMessageReceived: ((Message) -> Unit)? = null

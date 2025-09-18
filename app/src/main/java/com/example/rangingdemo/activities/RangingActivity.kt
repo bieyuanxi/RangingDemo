@@ -1,6 +1,5 @@
 package com.example.rangingdemo.activities
 
-import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -14,13 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,32 +28,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rangingdemo.CmdPing
 import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray
 import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
-import com.example.rangingdemo.CmdStartPlay
-import com.example.rangingdemo.CmdStartRecord
 import com.example.rangingdemo.CmdStop
-import com.example.rangingdemo.CmdStopPlay
-import com.example.rangingdemo.CmdStopRecord
-import com.example.rangingdemo.Message
 import com.example.rangingdemo.MpChartWithStateFlow
 import com.example.rangingdemo.N
 import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.Param
 import com.example.rangingdemo.ZC_hat
 import com.example.rangingdemo.ZC_hat_prime
-import com.example.rangingdemo.complex.Complex32Array
 import com.example.rangingdemo.consumeComplexArray2StereoFloatArray
 import com.example.rangingdemo.f_s
 import com.example.rangingdemo.get_distance
-import com.example.rangingdemo.jsonFormat
 import com.example.rangingdemo.modulate
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioProcessingParams
@@ -62,25 +52,7 @@ import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import com.example.rangingdemo.viewmodel.ClientViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
-import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import kotlin.system.measureTimeMillis
-
-// TODO: 应该使用更好的方法
-val leftArrays = Array(10) { i ->
-    intArrayOf()
-}
-val rightArrays = Array(10) { i ->
-    intArrayOf()
-}
 
 class RangingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,29 +63,6 @@ class RangingActivity : ComponentActivity() {
 
         val audioRecordViewModel: AudioRecordViewModel by viewModels()
         val audioTrackViewModel: AudioTrackViewModel by viewModels()
-
-        val serverViewModel: ServerViewModel by viewModels()
-
-        serverViewModel.onMessageReceived = { msg ->
-            when (msg) {
-                is CmdResponseArray -> {
-                    leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
-                    rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
-                    Log.d(
-                        "CmdResponseArrayLeft",
-                        "fc: ${msg.f_c}, ${msg.array_left.contentToString()}"
-                    )
-                    Log.d(
-                        "CmdResponseArrayRight",
-                        "fc: ${msg.f_c}, ${msg.array_right.contentToString()}"
-                    )
-                }
-
-                is CmdPong -> {
-
-                }
-            }
-        }
 
         val clientViewModel: ClientViewModel by viewModels()
         clientViewModel.onMessageReceived = { msg ->
@@ -211,23 +160,64 @@ private var f_c = mutableIntStateOf(0)
 private val start_f_c = 18000
 private val step = 1000
 
+// TODO: 应该使用更好的方法
+val leftMatrix = Array(10) {
+    intArrayOf()
+}
+val rightMatrix = Array(10) {
+    intArrayOf()
+}
 
 @Composable
 fun NewServerUI() {
     val serverViewModel: ServerViewModel = viewModel()
 
-    val isServerRunning by remember { serverViewModel.isRunning }
+    // 接收到返回数据的客户端设备数量
+    var cmdResponseArrayCount by remember { mutableIntStateOf(0) }
+    serverViewModel.onMessageReceived = { msg ->
+        when (msg) {
+            is CmdResponseArray -> {
+                leftMatrix[(msg.f_c - start_f_c) / step] = msg.array_left
+                rightMatrix[(msg.f_c - start_f_c) / step] = msg.array_right
+                cmdResponseArrayCount += 1
+                Log.d(
+                    "CmdResponseArrayLeft",
+                    "fc: ${msg.f_c}, ${msg.array_left.contentToString()}"
+                )
+                Log.d(
+                    "CmdResponseArrayRight",
+                    "fc: ${msg.f_c}, ${msg.array_right.contentToString()}"
+                )
+            }
 
-    var distance by remember { mutableStateOf(0f) }
+            is CmdPong -> {
+
+            }
+        }
+    }
+
+    val isServerRunning by remember { serverViewModel.isRunning }
+    // 已建立连接的设备数量
+    val clientCounter by remember { serverViewModel.clientCounter }
+
+    var distance by remember { mutableFloatStateOf(0f) }
+    if (cmdResponseArrayCount > 1 && cmdResponseArrayCount == clientCounter) {    // 收到全部设备数据时计算
+        distance = get_distance(    // 这里只计算前两个设备的距离
+            m_aa = rightMatrix[0][0],
+            m_ab = rightMatrix[1][0],
+            m_ba = rightMatrix[0][1],
+            m_bb = rightMatrix[1][1],
+            N_prime = N,
+            N = N
+        )
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Server")
+        Text("Server(client count: ${clientCounter})")
     }
-    val scope = rememberCoroutineScope()
-
 
     Row {
         Button(onClick = {
@@ -237,30 +227,27 @@ fun NewServerUI() {
                 serverViewModel.startServer()
             }
         }) { Text(if (!isServerRunning) "start server" else "stop server") }
-        Spacer(Modifier.padding(10.dp))
+        Spacer(Modifier.padding(2.dp))
         Button(
             onClick = {
-                serverViewModel.performRangingJob(start_f_c, step)
+                cmdResponseArrayCount = 0   // 初始接收到返回数据的客户端设备数量为0
+                serverViewModel.performRangingJob() { count ->
+                    allocateParamList(
+                        deviceCnt = count,
+                        start_f_c,
+                        step
+                    ).toTypedArray()
+                }
             }
-        ) { Text("start ranging") }
-    }
-    val cmdResponseArray by serverViewModel.receivedMsgList.collectAsStateWithLifecycle()
-    if (cmdResponseArray.size > 1) {
-        for (msg in cmdResponseArray) {
-            leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
-            rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
-        }
-        distance = get_distance(
-            m_aa = rightArrays[0][0],
-            m_ab = rightArrays[1][0],
-            m_ba = rightArrays[0][1],
-            m_bb = rightArrays[1][1],
-            N_prime = N,
-            N = N
-        )
+        ) { Text("开始测距") }
+        Spacer(Modifier.padding(2.dp))
+        Button(
+            onClick = {
+                // TODO
+            }
+        ) { Text("开始测角") }
     }
 
-    Text("Server received: ${serverViewModel.receivedMsg.collectAsState().value}")
     Text("distance: $distance")
 }
 
@@ -287,4 +274,14 @@ fun NewClientUI(host: String) {
         }
     }) { Text(if (!isClientRunning) "start client" else "stop client") }
 //    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
+}
+
+/**
+ * 默认的参数分配策略
+ */
+fun allocateParamList(deviceCnt: Int, start_f_c: Int, step: Int): List<Param> {
+    val paramsList = (0 until deviceCnt).map { index ->
+        Param(start_f_c + step * index, 1, 37)
+    }
+    return paramsList
 }

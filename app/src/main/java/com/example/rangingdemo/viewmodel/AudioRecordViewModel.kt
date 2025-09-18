@@ -42,12 +42,7 @@ class AudioRecordViewModel : ViewModel() {
 
     // 可动态修改的参数列表
     private val _processingParams = MutableStateFlow(
-        // 默认参数（可初始化为空或默认值）
-        listOf(
-            AudioProcessingParams(ZC_hat_prime, N_prime, 19000),
-            AudioProcessingParams(ZC_hat_prime, N_prime, 20000),
-            AudioProcessingParams(ZC_hat_prime, N_prime, 21000),
-        )
+        listOf<AudioProcessingParams>()
     )
     val processingParams: StateFlow<List<AudioProcessingParams>> = _processingParams
 
@@ -56,7 +51,8 @@ class AudioRecordViewModel : ViewModel() {
     val cirList: SharedFlow<List<Pair<FloatArray, FloatArray>>> = _cirList
 
     // 处理后的结果: 峰值列表(列表每一项对应一个频段的左右声道峰值)
-    private val _indexList = MutableStateFlow<List<Pair<Pair<Int, Float>, Pair<Int, Float>>>>(listOf())
+    private val _indexList =
+        MutableStateFlow<List<Pair<Pair<Int, Float>, Pair<Int, Float>>>>(listOf())
     val indexList: StateFlow<List<Pair<Pair<Int, Float>, Pair<Int, Float>>>> = _indexList
 
     init {
