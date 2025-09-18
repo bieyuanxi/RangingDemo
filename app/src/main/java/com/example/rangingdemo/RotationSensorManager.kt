@@ -19,7 +19,7 @@ class RotationSensorManager() : SensorEventListener {
 
     // 用于平滑处理的滑动窗口
     private val angleWindow = mutableListOf<Float>()
-    private val windowSize = 5
+    private val windowSize = 1  // 设置为1以取消滑动窗口，因为从-180到180度跳变自动平滑的结果不可接受  TODO: 完全移除滑动窗口
 
     // 校准基准角度
     private var initialAngle: Float = 0f
