@@ -17,13 +17,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,8 +49,10 @@ import com.example.rangingdemo.viewmodel.AudioProcessingParams
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import com.example.rangingdemo.viewmodel.ClientViewModel
+import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
 import kotlin.system.measureTimeMillis
+import com.example.rangingdemo.RotatePhoneDialog
 
 class RangingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -142,11 +142,12 @@ class RangingActivity : ComponentActivity() {
                             NewServerUI()
                             HorizontalDivider(thickness = 2.dp)
                         }
-
+                        AngleUI()
                         NewClientUI(host)
                         HorizontalDivider(thickness = 2.dp)
                         MpChartWithStateFlow(f_c = f_c.intValue, cirList)
 //                        StateFlow2()
+
                     }
                 }
             }
@@ -240,17 +241,66 @@ fun NewServerUI() {
                 }
             }
         ) { Text("开始测距") }
-        Spacer(Modifier.padding(2.dp))
-        Button(
-            onClick = {
-                // TODO
-            }
-        ) { Text("开始测角") }
     }
 
     Text("distance: $distance")
 }
 
+
+/**
+ * 测角UI
+ */
+@Composable
+fun AngleUI() {
+    val serverViewModel: ServerViewModel = viewModel()
+    val audioRecordViewModel: AudioRecordViewModel = viewModel()
+    val rotationAngleViewModel: RotationAngleViewModel = viewModel()
+
+    val angle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
+
+    // 状态管理
+    var isDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
+    var rotationProgress by remember { mutableStateOf(0f) } // 旋转进度（0f~360f）
+
+    Button(
+        onClick = {
+            // TODO
+            audioRecordViewModel.start()
+
+            val paramsArray = allocateParamList(
+                deviceCnt = 1,
+                start_f_c,
+                step
+            ).toTypedArray()
+
+            serverViewModel.write2AllClient(CmdSetParams(
+                paramsArray[0].f_c, // deviceCnt == 1
+                N,
+                paramsArray
+            ))
+
+            // 提示旋转手机
+            rotationAngleViewModel.calibrate()  // 校准为0
+            isDialogShowing = true
+
+            // 旋转完成
+            serverViewModel.write2AllClient(CmdStop())
+            audioRecordViewModel.stop()
+            // 调用算法
+        }
+    ) { Text("开始测角") }
+
+    // 旋转提示弹窗
+    if (isDialogShowing) {
+        val angle = angle.toInt()
+        RotatePhoneDialog(
+            isShowing = isDialogShowing,
+            rotationProgress = if (angle < 0) 360 + angle else angle,
+            onDismiss = { isDialogShowing = false } // 关闭弹窗
+        )
+    }
+
+}
 
 @Composable
 fun NewClientUI(host: String) {

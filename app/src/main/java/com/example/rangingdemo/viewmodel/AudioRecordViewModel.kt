@@ -75,7 +75,7 @@ class AudioRecordViewModel : ViewModel() {
             val timeSpent = measureNanoTime {
                 result = processInParallel(rawData, params)
             }
-            Log.d("processInParallel", "${ns2ms(timeSpent)}, params=${params.size}")
+            Log.d("processInParallel", "${ns2ms(timeSpent)}ms, params=${params.size}")
             result
         }.onEach { processedData ->
             _cirList.emit(processedData)
