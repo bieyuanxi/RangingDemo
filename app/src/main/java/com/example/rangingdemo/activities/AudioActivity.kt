@@ -2,6 +2,7 @@ package com.example.rangingdemo.activities
 
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -35,10 +36,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rangingdemo.FlowDataSaver
 import com.example.rangingdemo.MpChartWithStateFlow
 import com.example.rangingdemo.N
 import com.example.rangingdemo.N_prime
@@ -49,14 +52,14 @@ import com.example.rangingdemo.f_s
 import com.example.rangingdemo.generateSimpleStereoAudio
 import com.example.rangingdemo.modulate
 import com.example.rangingdemo.viewmodel.AudioProcessingParams
+import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.coroutines.flow.StateFlow
-
-
+import java.io.File
 
 
 class AudioActivity : ComponentActivity() {
@@ -105,7 +108,7 @@ class AudioActivity : ComponentActivity() {
                             AudioRecorderUI(frameLen = N)
                         }
                         HorizontalDivider(thickness = 2.dp)
-                        Grv()
+                        GrvAndAudio()
                         HorizontalDivider(thickness = 2.dp)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("MpChart")
@@ -193,4 +196,51 @@ fun AudioRecorderUI(viewModel: AudioRecordViewModel = viewModel(), frameLen: Int
             text = if (!isRecording) "Record" else "Stop",
         )
     }
+}
+
+@Composable
+fun GrvAndAudio() {
+    val rotationAngleViewModel: RotationAngleViewModel = viewModel()
+    val audioRecordViewModel: AudioRecordViewModel = viewModel()
+
+    val flowSaver = remember {
+        FlowDataSaver(rotationAngleViewModel.viewModelScope)
+    }
+
+    val angle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
+
+    var isRecording by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Game Rotation Vector Sensor")
+    }
+    Text("range=(-180°, 180°), angle = %.1f°".format(angle))
+    Row {
+        Button(onClick = {
+            rotationAngleViewModel.calibrate()
+        }) { Text("calibrate") }
+        Button(onClick = {
+            isRecording = !isRecording
+            if (isRecording) {
+                val outputFile = File(context.filesDir, "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv")
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
+            } else {
+                flowSaver.close()
+            }
+        }) { Text(if(!isRecording) "Record angle&index" else "stop") }
+    }
+}
+
+fun startSave(isRecording: Boolean) {
+
+}
+
+fun stopSave() {
+
 }
