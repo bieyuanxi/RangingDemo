@@ -1,6 +1,5 @@
 package com.example.rangingdemo
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import kotlinx.coroutines.delay
 
 /**
  * 旋转手机提示弹窗：包含圆形进度条、提示文本、完成提示
@@ -43,40 +40,38 @@ import kotlinx.coroutines.delay
 fun RotatePhoneDialog(
     isShowing: Boolean,
     rotationProgress: Float,
-    onDismiss: () -> Unit
+    onDismiss: suspend () -> Unit
 ) {
-    var isCompleted by remember { mutableStateOf(false) } // 是否旋转完成
-    var progress by remember { mutableFloatStateOf(0f) }
-
-    if (isCompleted) {
-        LaunchedEffect(Unit) {
-            progress = 360f
-            delay(1500)
-            onDismiss()
-        }
-    } else {
-        if (rotationProgress - progress < 30) { // 防止跳变时更新&&允许最大单步30度跨越
-            progress = rotationProgress
-        }
-
-        // 设置两个检查点180~190度和0~10度，只有在180~190度先激活后，再激活0~10度的情况下才认为旋转完整一圈
-        var check by remember { mutableStateOf(false) }
-        if(progress in 180f..190f) {
-            check = true
-        }
-
-        // 旋转进度达到第二个检查点，标记完成并关闭
-        if (check && progress in 0f..10f) {
-            isCompleted = true
-        }
-    }
-
-//    lastRotationProgress = progress
     AnimatedVisibility(
         visible = isShowing,
         enter = fadeIn(),
         exit = fadeOut()
     ) {
+        var isCompleted by remember { mutableStateOf(false) } // 是否旋转完成
+        var progress by remember { mutableFloatStateOf(0f) }
+
+        if (isCompleted) {
+            LaunchedEffect(Unit) {
+                onDismiss()
+            }
+        } else {
+            if (rotationProgress - progress < 30) { // 防止跳变时更新&&允许最大单步30度跨越
+                progress = rotationProgress
+            }
+
+            // 设置两个检查点180~190度和0~10度，只有在180~190度先激活后，再激活0~10度的情况下才认为旋转完整一圈
+            var check by remember { mutableStateOf(false) }
+            if(progress in 180f..190f) {
+                check = true
+            }
+
+            // 旋转进度达到第二个检查点，标记完成并关闭
+            if (check && progress in 0f..10f) {
+                progress = 360f
+                isCompleted = true
+            }
+        }
+
         Dialog(
             onDismissRequest = {}, // 禁止点击外部关闭
             properties = DialogProperties(

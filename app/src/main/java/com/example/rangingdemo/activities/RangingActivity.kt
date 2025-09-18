@@ -17,6 +17,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -282,22 +283,25 @@ fun AngleUI() {
             // 提示旋转手机
             rotationAngleViewModel.calibrate()  // 校准为0
             isDialogShowing = true
-
-            // 旋转完成
-            serverViewModel.write2AllClient(CmdStop())
-            audioRecordViewModel.stop()
-            // 调用算法
         }
     ) { Text("开始测角") }
 
     // 旋转提示弹窗
-    if (isDialogShowing) {
-        RotatePhoneDialog(
-            isShowing = isDialogShowing,
-            rotationProgress = if (angle < 0) 360 + angle else angle,
-            onDismiss = { isDialogShowing = false } // 关闭弹窗
-        )
-    }
+    RotatePhoneDialog(
+        isShowing = isDialogShowing,
+        rotationProgress = if (angle < 0) 360 + angle else angle,
+        onDismiss = {   // 旋转完成
+            serverViewModel.write2AllClient(CmdStop())
+            audioRecordViewModel.stop()
+
+            // TODO: 调用算法
+//            val angleOffset = getAngle()
+//            val result = angleOffset - angle
+
+            // 关闭弹窗
+            isDialogShowing = false
+        }
+    )
 
 }
 
