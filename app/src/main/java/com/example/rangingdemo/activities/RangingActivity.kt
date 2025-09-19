@@ -1,5 +1,6 @@
 package com.example.rangingdemo.activities
 
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -26,8 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rangingdemo.CmdPing
 import com.example.rangingdemo.CmdPong
@@ -35,6 +38,7 @@ import com.example.rangingdemo.CmdRequestArray
 import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
 import com.example.rangingdemo.CmdStop
+import com.example.rangingdemo.FlowDataSaver
 import com.example.rangingdemo.MpChartWithStateFlow
 import com.example.rangingdemo.N
 import com.example.rangingdemo.N_prime
@@ -54,6 +58,7 @@ import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
 import kotlin.system.measureTimeMillis
 import com.example.rangingdemo.RotatePhoneDialog
+import java.io.File
 
 class RangingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -253,6 +258,8 @@ fun NewServerUI() {
  */
 @Composable
 fun AngleUI() {
+    val context = LocalContext.current
+
     val serverViewModel: ServerViewModel = viewModel()
     val audioRecordViewModel: AudioRecordViewModel = viewModel()
     val rotationAngleViewModel: RotationAngleViewModel = viewModel()
@@ -261,12 +268,15 @@ fun AngleUI() {
 
     // 状态管理
     var isDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
-    var rotationProgress by remember { mutableStateOf(0f) } // 旋转进度（0f~360f）
+
+    // 保存数据
+    val flowSaver = remember {
+        FlowDataSaver(rotationAngleViewModel.viewModelScope)
+    }
 
     Button(
         onClick = {
             // TODO
-            audioRecordViewModel.start()
 
             val paramsArray = allocateParamList(
                 deviceCnt = 1,
@@ -274,15 +284,28 @@ fun AngleUI() {
                 step
             ).toTypedArray()
 
+            val params = paramsArray.map { param ->
+                AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+            }
+
+            audioRecordViewModel.setProcessingParams(params)
+            audioRecordViewModel.start()
+
             serverViewModel.write2AllClient(CmdSetParams(
                 paramsArray[0].f_c, // deviceCnt == 1
                 N,
                 paramsArray
             ))
 
-            // 提示旋转手机
+
             rotationAngleViewModel.calibrate()  // 校准为0
-            isDialogShowing = true
+            isDialogShowing = true  // 提示旋转手机
+
+            // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+            val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+            val outputFile = File(context.filesDir, fileName)
+            flowSaver.init(outputFile)
+            flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
         }
     ) { Text("开始测角") }
 
@@ -293,6 +316,8 @@ fun AngleUI() {
         onDismiss = {   // 旋转完成
             serverViewModel.write2AllClient(CmdStop())
             audioRecordViewModel.stop()
+
+            flowSaver.close()   // 关闭文件流
 
             // TODO: 调用算法
 //            val angleOffset = getAngle()

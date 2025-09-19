@@ -33,6 +33,8 @@ class FlowDataSaver(private val scope: CoroutineScope) {
     // 时间戳格式化（可选，用于可读性）
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
 
+    var fileName: String? = null
+
     /**
      * 初始化文件写入器
      * @param outputFile 目标文件
@@ -41,6 +43,7 @@ class FlowDataSaver(private val scope: CoroutineScope) {
         try {
             // 若文件已存在，追加模式；否则创建新文件
             fileWriter = FileWriter(outputFile, true)
+            fileName = outputFile.name
             // 写入表头（CSV格式）
             fileWriter?.write("timestamp,angle,cir_left,cir_right,diff\n")
         } catch (e: IOException) {
@@ -58,7 +61,7 @@ class FlowDataSaver(private val scope: CoroutineScope) {
         indexFlow: Flow<List<Pair<Pair<Int, Float>, Pair<Int, Float>>>>
     ) {
         if (fileWriter == null) {
-            println("请先调用init()初始化文件")
+            Log.e("saveFlows", "请先调用init()初始化文件")
             return
         }
 
