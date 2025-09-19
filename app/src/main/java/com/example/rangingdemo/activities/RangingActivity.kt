@@ -58,6 +58,7 @@ import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
 import kotlin.system.measureTimeMillis
 import com.example.rangingdemo.RotatePhoneDialog
+import com.example.rangingdemo.getAngleFromFile
 import java.io.File
 
 class RangingActivity : ComponentActivity() {
@@ -148,7 +149,6 @@ class RangingActivity : ComponentActivity() {
                             NewServerUI()
                             HorizontalDivider(thickness = 2.dp)
                         }
-                        AngleUI()
                         NewClientUI(host)
                         HorizontalDivider(thickness = 2.dp)
                         MpChartWithStateFlow(f_c = f_c.intValue, cirList)
@@ -250,6 +250,8 @@ fun NewServerUI() {
     }
 
     Text("distance: $distance")
+
+    AngleUI()
 }
 
 
@@ -274,6 +276,9 @@ fun AngleUI() {
         FlowDataSaver(rotationAngleViewModel.viewModelScope)
     }
 
+    var angleOffset by remember { mutableFloatStateOf(0.0f) }
+
+    Text("首先开启服务端，等待客户端连接后可开始测角工作")
     Button(
         onClick = {
             // TODO
@@ -309,6 +314,10 @@ fun AngleUI() {
         }
     ) { Text("开始测角") }
 
+    Text("angle_algo_output: %.1f".format(angleOffset))
+    Text("grv_angle: %.1f".format(angle))
+    Text("angle_result = %.1f".format(angleOffset - angle))
+
     // 旋转提示弹窗
     RotatePhoneDialog(
         isShowing = isDialogShowing,
@@ -320,9 +329,9 @@ fun AngleUI() {
             flowSaver.close()   // 关闭文件流
 
             // TODO: 调用算法
-//            val angleOffset = getAngle()
-//            val result = angleOffset - angle
-
+            val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+            val angleOffsetCandidate = getAngleFromFile(inputFile)
+            angleOffset = angleOffsetCandidate[0].toFloat()
             // 关闭弹窗
             isDialogShowing = false
         }
@@ -351,7 +360,6 @@ fun NewClientUI(host: String) {
             clientViewModel.startClient(host)
         }
     }) { Text(if (!isClientRunning) "start client" else "stop client") }
-//    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
 }
 
 /**
