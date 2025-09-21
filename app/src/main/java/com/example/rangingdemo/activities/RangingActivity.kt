@@ -18,7 +18,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rangingdemo.AngleCircularIndicator
+import com.example.rangingdemo.AngleDialog
 import com.example.rangingdemo.CmdPing
 import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray
@@ -269,7 +270,8 @@ fun AngleUI() {
     val angle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
 
     // 状态管理
-    var isDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
+    var isRotatePhoneDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
+    var isAngleDialogShowing by remember { mutableStateOf(false) } // 摇一摇
 
     // 保存数据
     val flowSaver = remember {
@@ -279,40 +281,45 @@ fun AngleUI() {
     var angleOffset by remember { mutableFloatStateOf(0.0f) }
 
     Text("首先开启服务端，等待客户端连接后可开始测角工作")
-    Button(
-        onClick = {
-            // TODO
+    Row {
+        Button(
+            onClick = {
+                // 以旋转360度的方式发现周围的设备（通过录制音频）
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
 
-            val paramsArray = allocateParamList(
-                deviceCnt = 1,
-                start_f_c,
-                step
-            ).toTypedArray()
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
 
-            val params = paramsArray.map { param ->
-                AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(CmdSetParams(
+                    paramsArray[0].f_c, // deviceCnt == 1
+                    N,
+                    paramsArray
+                ))
+
+
+                rotationAngleViewModel.calibrate()  // 校准为0
+                isRotatePhoneDialogShowing = true  // 提示旋转手机
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
             }
-
-            audioRecordViewModel.setProcessingParams(params)
-            audioRecordViewModel.start()
-
-            serverViewModel.write2AllClient(CmdSetParams(
-                paramsArray[0].f_c, // deviceCnt == 1
-                N,
-                paramsArray
-            ))
-
-
+        ) { Text("测角（发现模式）") }
+        Button(onClick = {
             rotationAngleViewModel.calibrate()  // 校准为0
-            isDialogShowing = true  // 提示旋转手机
-
-            // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
-            val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
-            val outputFile = File(context.filesDir, fileName)
-            flowSaver.init(outputFile)
-            flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
-        }
-    ) { Text("开始测角") }
+            isAngleDialogShowing = true
+        }) { Text("测角（摇一摇）") }
+    }
 
     Text("angle_algo_output: %.1f".format(angleOffset))
     Text("grv_angle: %.1f".format(angle))
@@ -320,7 +327,7 @@ fun AngleUI() {
 
     // 旋转提示弹窗
     RotatePhoneDialog(
-        isShowing = isDialogShowing,
+        isShowing = isRotatePhoneDialogShowing,
         rotationProgress = if (angle < 0) 360 + angle else angle,
         onDismiss = {   // 旋转完成
             serverViewModel.write2AllClient(CmdStop())
@@ -333,9 +340,14 @@ fun AngleUI() {
             val angleOffsetCandidate = getAngleFromFile(inputFile)
             angleOffset = angleOffsetCandidate[0].toFloat()
             // 关闭弹窗
-            isDialogShowing = false
+            isRotatePhoneDialogShowing = false
         }
     )
+
+
+    if (isAngleDialogShowing) {
+        AngleCircularIndicator(angle)
+    }
 
 }
 

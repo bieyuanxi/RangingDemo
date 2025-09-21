@@ -61,7 +61,7 @@ fun RotatePhoneDialog(
 
             // 设置两个检查点180~190度和0~10度，只有在180~190度先激活后，再激活0~10度的情况下才认为旋转完整一圈
             var check by remember { mutableStateOf(false) }
-            if(progress in 180f..190f) {
+            if (progress in 180f..190f) {
                 check = true
             }
 
