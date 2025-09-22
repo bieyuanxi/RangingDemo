@@ -1,7 +1,8 @@
 # 外部依赖
+## 1. rustfft库
 项目使用了[rustfft](https://docs.rs/rustfft/latest/rustfft/)加速fft和ifft，
 使用[rust_fft_wrapper](https://gitee.com/bieyuanxi/rust_fft_wrapper.git)简要包装并编译依赖库
-## 使用简单包装的rustfft库
+
 可直接下载已经编译好的库：
 1. 创建文件夹：`app/jniLibs`和`app/native-libs`(后者用于本地测试用例)
 2. 将[压缩文件(版本v0.2)](https://pan.baidu.com/s/1_6ke4sJlp7hgYhD66h0mrw?pwd=y4q3)解压到jniLibs目录下
@@ -19,6 +20,10 @@
     ```
 4. 编译Android项目时应该不会出现编译错误了
 
+## 2. Python on Android
+项目使用`python`库的一些拟合算法，因此需要引入python。使用[chaquopy](https://github.com/chaquo/chaquopy)插件实现在安卓程序中运行python。
+编译代码需要本地安装`python`，因为`chaquopy`开启[字节码编译](https://chaquo.com/chaquopy/doc/current/android.html#android-bytecode)时需要提前在本机环境将代码编译为.pyc文件。
+目前使用的`python`版本为3.12.x，配置使用的`python`版本：修改`app/build.gradle.kts`文件里`chaquopy`下的`version`。
 
 
 # Q

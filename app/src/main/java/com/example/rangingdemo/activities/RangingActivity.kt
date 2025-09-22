@@ -32,7 +32,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rangingdemo.AngleCircularIndicator
-import com.example.rangingdemo.AngleDialog
 import com.example.rangingdemo.CmdPing
 import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray

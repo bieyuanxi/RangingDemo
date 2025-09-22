@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization") version "2.1.21"
+    id("com.chaquo.python")
 }
 
 android {
@@ -17,6 +18,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {
@@ -42,6 +47,17 @@ android {
     sourceSets {
         getByName("main") {
             jniLibs.srcDirs("jniLibs")
+        }
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.12"
+        pip {
+            options("--extra-index-url", "https://pypi.tuna.tsinghua.edu.cn/simple")
+            install("numpy")
+            install("pandas")
         }
     }
 }

@@ -1,9 +1,11 @@
 pluginManagement {
     repositories {
         // 优先使用国内镜像下载插件（如Android Gradle Plugin、Kotlin插件）
+        maven { url = uri("https://maven.aliyun.com/repository/central") }
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
+
         // 官方仓库作为后备
         google {
             content {
