@@ -18,14 +18,11 @@ def sliding_window_mean(df, column, y=2):
 
 def calculate_angle(angle_list, diff_list):
     """
-
     :param angle_list: 角度列表
     :param diff_list: 差值列表
     :return: angle_at_min_diff：最小值所对应角度
     """
     column = 'diff'
-#     angle_list = java.jarray(jfloat)(angle_list)
-#     diff_list = java.jarray(jfloat)(diff_list)
     df = pd.DataFrame({"angle": angle_list, 'diff': diff_list})
     df["angle_unwrap"] = np.unwrap(np.deg2rad(df["angle"])) * 180 / np.pi
     df_sorted = df.sort_values(by="angle_unwrap", ascending=True)
@@ -34,6 +31,5 @@ def calculate_angle(angle_list, diff_list):
     min_row = diff_df.loc[diff_df[column + "_mean"].idxmin()]
     # 获取对应的 angle
     angle_at_min_diff = min_row["angle"]
-
 
     return angle_at_min_diff

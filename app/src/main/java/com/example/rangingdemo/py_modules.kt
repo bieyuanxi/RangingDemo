@@ -13,5 +13,7 @@ fun npVersion(): String = hello_py.callAttr("np_version").toString()
 
 fun pandasVersion(): String = hello_py.callAttr("pandas_version").toString()
 
-fun calculateAngle(angleList: List<Float>, diffList: List<Float>): Float =
-    angle_algorithm.callAttr("calculate_angle", angleList.toFloatArray(), diffList.toFloatArray()).toFloat()
+fun calculateAngle(angleList: DoubleArray, diffList: DoubleArray): Double {
+    assert(angleList.size == diffList.size)
+    return angle_algorithm.callAttr("calculate_angle", angleList, diffList).toDouble()
+}

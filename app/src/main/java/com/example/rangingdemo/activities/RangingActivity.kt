@@ -355,8 +355,7 @@ fun AngleUI() {
                 // TODO: 调用算法
                 val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
                 val (angleRaw, diffRaw) = readCsv(inputFile)
-//                Log.d("angleRaw", "${angleRaw.}")
-                val angleOffsetCandidate = calculateAngle(angleRaw.map { it.toFloat() }, diffRaw.map { it.toFloat() })
+                val angleOffsetCandidate = calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
                 angleOffset = angleOffsetCandidate.toFloat()
             }
         }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束") }
