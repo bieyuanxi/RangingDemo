@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn

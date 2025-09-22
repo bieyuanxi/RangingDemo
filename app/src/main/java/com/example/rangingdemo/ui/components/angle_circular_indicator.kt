@@ -1,4 +1,4 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size

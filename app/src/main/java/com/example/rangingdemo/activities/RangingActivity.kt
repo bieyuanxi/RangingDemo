@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rangingdemo.AngleCircularIndicator
+import com.example.rangingdemo.ui.components.AngleCircularIndicator
 import com.example.rangingdemo.CmdPing
 import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray
@@ -39,7 +39,7 @@ import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
 import com.example.rangingdemo.CmdStop
 import com.example.rangingdemo.FlowDataSaver
-import com.example.rangingdemo.MpChartWithStateFlow
+import com.example.rangingdemo.ui.components.MpChartWithStateFlow
 import com.example.rangingdemo.N
 import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.Param
@@ -57,7 +57,7 @@ import com.example.rangingdemo.viewmodel.ClientViewModel
 import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
 import kotlin.system.measureTimeMillis
-import com.example.rangingdemo.RotatePhoneDialog
+import com.example.rangingdemo.ui.components.RotatePhoneDialog
 import com.example.rangingdemo.getAngleFromFile
 import java.io.File
 
