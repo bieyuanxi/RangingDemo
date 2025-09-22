@@ -18,6 +18,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,6 +46,7 @@ import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.Param
 import com.example.rangingdemo.ZC_hat
 import com.example.rangingdemo.ZC_hat_prime
+import com.example.rangingdemo.calculateAngle
 import com.example.rangingdemo.consumeComplexArray2StereoFloatArray
 import com.example.rangingdemo.f_s
 import com.example.rangingdemo.get_distance
@@ -59,6 +61,7 @@ import com.example.rangingdemo.viewmodel.ServerViewModel
 import kotlin.system.measureTimeMillis
 import com.example.rangingdemo.ui.components.RotatePhoneDialog
 import com.example.rangingdemo.getAngleFromFile
+import com.example.rangingdemo.readCsv
 import java.io.File
 
 class RangingActivity : ComponentActivity() {
@@ -283,7 +286,6 @@ fun AngleUI() {
     Row {
         Button(
             onClick = {
-                // 以旋转360度的方式发现周围的设备（通过录制音频）
                 val paramsArray = allocateParamList(
                     deviceCnt = 1,
                     start_f_c,
@@ -313,11 +315,51 @@ fun AngleUI() {
                 flowSaver.init(outputFile)
                 flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
             }
-        ) { Text("测角（发现模式）") }
+        ) { Text("测角（发现模式）") }  // 以旋转360度的方式发现周围的设备（通过录制音频）
+
         Button(onClick = {
-            rotationAngleViewModel.calibrate()  // 校准为0
-            isAngleDialogShowing = true
-        }) { Text("测角（摇一摇）") }
+            isAngleDialogShowing = !isAngleDialogShowing
+            if (isAngleDialogShowing) {
+                rotationAngleViewModel.calibrate()  // 校准为0
+
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
+
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
+
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(CmdSetParams(
+                    paramsArray[0].f_c, // deviceCnt == 1
+                    N,
+                    paramsArray
+                ))
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
+            } else {
+                serverViewModel.write2AllClient(CmdStop())
+                audioRecordViewModel.stop()
+
+                flowSaver.close()   // 关闭文件流
+
+                // TODO: 调用算法
+                val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+                val (angleRaw, diffRaw) = readCsv(inputFile)
+//                Log.d("angleRaw", "${angleRaw.}")
+                val angleOffsetCandidate = calculateAngle(angleRaw.map { it.toFloat() }, diffRaw.map { it.toFloat() })
+                angleOffset = angleOffsetCandidate.toFloat()
+            }
+        }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束") }
     }
 
     Text("angle_algo_output: %.1f".format(angleOffset))
@@ -334,7 +376,7 @@ fun AngleUI() {
 
             flowSaver.close()   // 关闭文件流
 
-            // TODO: 调用算法
+            // 调用算法
             val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
             val angleOffsetCandidate = getAngleFromFile(inputFile)
             angleOffset = angleOffsetCandidate[0].toFloat()

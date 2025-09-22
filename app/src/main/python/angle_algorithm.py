@@ -24,6 +24,8 @@ def calculate_angle(angle_list, diff_list):
     :return: angle_at_min_diff：最小值所对应角度
     """
     column = 'diff'
+#     angle_list = java.jarray(jfloat)(angle_list)
+#     diff_list = java.jarray(jfloat)(diff_list)
     df = pd.DataFrame({"angle": angle_list, 'diff': diff_list})
     df["angle_unwrap"] = np.unwrap(np.deg2rad(df["angle"])) * 180 / np.pi
     df_sorted = df.sort_values(by="angle_unwrap", ascending=True)
