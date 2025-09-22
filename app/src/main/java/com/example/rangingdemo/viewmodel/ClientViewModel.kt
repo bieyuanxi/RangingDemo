@@ -9,9 +9,11 @@ import com.example.rangingdemo.jsonFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
@@ -19,6 +21,7 @@ import java.net.SocketException
 
 class ClientViewModel : ViewModel() {
     private var socket: Socket? = null
+    private var writer: PrintWriter? = null
 
     val isRunning = mutableStateOf(false)
     private val _receivedMsg = MutableStateFlow("")
@@ -29,22 +32,28 @@ class ClientViewModel : ViewModel() {
 
     fun startClient(host: String, port: Int = 8888) = viewModelScope.launch(Dispatchers.IO) {
         isRunning.value = true
-        socket = Socket(host, port)
+        try {
+            socket = Socket(host, port)
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
         socket?.let { socket ->
             Log.d("Client", "Connected to server: ${socket.inetAddress}")
             val reader = BufferedReader(InputStreamReader(socket.inputStream))
+            writer = PrintWriter(socket.outputStream, true)
             try {
-                while (reader.readLine().also {
-                        withContext(Dispatchers.Main) {
-                            Log.d("readLine", it)
-                            val msg = jsonFormat.decodeFromString<Message>(it)
-                            onMessageReceived?.invoke(msg)
-                        }
-                        _receivedMsg.value = it
-                    } != null) {
-                }
-            } catch (e: SocketException) {
+                do {
+                    val json = reader.readLine()?: break
+                    _receivedMsg.value = json
 
+                    val msg = jsonFormat.decodeFromString<Message>(json)
+                    withContext(Dispatchers.Default) { // TODO: 是否应该切换调度器，以及应该切换成什么调度器
+                        onMessageReceived?.invoke(msg)
+                    }
+                } while (viewModelScope.isActive)
+            } catch (e: IOException) {
+                e.printStackTrace()
             }
 
             Log.d("Client", "disconnected.")
@@ -52,15 +61,17 @@ class ClientViewModel : ViewModel() {
     }
 
     fun write(msg: String) = viewModelScope.launch(Dispatchers.IO) {
-        socket?.let { socket ->
-            val writer = PrintWriter(socket.outputStream, true)
-            writer.println(msg)
-        }
+        writer?.println(msg)
+    }
+
+    fun write(msg: Message) = viewModelScope.launch(Dispatchers.IO) {
+        write(jsonFormat.encodeToString(msg))
     }
 
     fun stopClient() {
         socket?.close()
         socket = null
+        writer = null
         isRunning.value = false
     }
 }

@@ -36,7 +36,8 @@ fun modulate(ZC_hat: Complex32Array, N: Int = 960, f_c: Int = 19000, f_s: Int = 
         X[i] = X[N - i].conjugate()
     }
 
-    return RustFFTWrapper.ifft(X)
+    RustFFTWrapper.ifftInPlace(X)
+    return X
 }
 
 
@@ -72,7 +73,8 @@ fun demodulate(y: Complex32Array, ZC_hat_prime: Complex32Array, N_prime: Int, f_
         CFR[N_prime - h_zc + i] = CFR_hat[i]    // 根据论文Proof部分推断，应该是做循环位移
     }
     // perform N'-point IDFT
-    return RustFFTWrapper.ifft(CFR)
+    RustFFTWrapper.ifftInPlace(CFR) // cir = ifft(CFR)
+    return CFR  // cir
 }
 
 /**

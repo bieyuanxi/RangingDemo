@@ -20,21 +20,29 @@ class CmdPing(val timestamp: Long = System.currentTimeMillis()) : Message
 @SerialName("cmd_pong")
 class CmdPong(val timestamp: Long = System.currentTimeMillis()) : Message
 
+@Serializable
+@SerialName("cmd_stop")
+class CmdStop() : Message
+
 
 @Serializable
 @SerialName("cmd_start_play")
+@Deprecated("no longer useful")
 class CmdStartPlay() : Message
 
 @Serializable
 @SerialName("cmd_stop_play")
+@Deprecated("use CmdStop()")
 class CmdStopPlay() : Message
 
 @Serializable
 @SerialName("cmd_start_record")
+@Deprecated("no longer useful")
 class CmdStartRecord() : Message
 
 @Serializable
 @SerialName("cmd_stop_record")
+@Deprecated("use CmdStop()")
 class CmdStopRecord() : Message
 
 @Serializable
@@ -52,12 +60,12 @@ class CmdResponseArray(val f_c: Int, val array_left: IntArray, val array_right: 
 
 @Serializable
 @SerialName("data")
-data class Param(val N: Int, val f_c: Int, val u: Int, val q: Int)
+data class Param(val f_c: Int, val u: Int, val q: Int)
 
 @Serializable
 @SerialName("cmd_set_params")
 // f_c 为该设备所用频率，params 为全体设备使用的信息
-class CmdSetParams(val f_c: Int, val params: Array<Param>) : Message
+class CmdSetParams(val f_c: Int, val N: Int, val params: Array<Param>) : Message
 
 val module = SerializersModule {
     polymorphic(Message::class) {
@@ -71,6 +79,7 @@ val module = SerializersModule {
         subclass(CmdRequestArray::class)
         subclass(CmdResponseArray::class)
         subclass(CmdSetParams::class)
+        subclass(CmdStop::class)
     }
 }
 

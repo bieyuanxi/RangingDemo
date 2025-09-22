@@ -1,6 +1,7 @@
 package com.example.rangingdemo.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rangingdemo.audio.AudioRecorder
@@ -12,11 +13,13 @@ import com.example.rangingdemo.f_s
 import com.example.rangingdemo.floatArray2ComplexArray
 import com.example.rangingdemo.getMaxIndexedValue
 import com.example.rangingdemo.magnitude
+import com.example.rangingdemo.ns2ms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
@@ -25,14 +28,17 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.system.measureNanoTime
 
 
 class AudioRecordViewModel : ViewModel() {
     private val audioRecorder = AudioRecorder()
 
-    private val _audioChannel = MutableStateFlow(Pair(floatArrayOf(), floatArrayOf()))
-    val audioChannel: StateFlow<Pair<FloatArray, FloatArray>> = _audioChannel
+    var stopUpdate = false
+
+    private val _audioChannel = MutableSharedFlow<Pair<FloatArray, FloatArray>>()
+    val audioChannel: SharedFlow<Pair<FloatArray, FloatArray>> = _audioChannel
 
     // 可动态修改的参数列表
     private val _processingParams = MutableStateFlow(
@@ -46,71 +52,60 @@ class AudioRecordViewModel : ViewModel() {
     val processingParams: StateFlow<List<AudioProcessingParams>> = _processingParams
 
     // cir list
-    private val _cirList = MutableStateFlow<List<Pair<FloatArray, FloatArray>>>(listOf())
-    val cirList: StateFlow<List<Pair<FloatArray, FloatArray>>> = _cirList
+    private val _cirList = MutableSharedFlow<List<Pair<FloatArray, FloatArray>>>()
+    val cirList: SharedFlow<List<Pair<FloatArray, FloatArray>>> = _cirList
 
     // 处理后的结果: 峰值下标列表
     private val _indexList = MutableStateFlow<List<Pair<Int, Int>>>(listOf())
     val indexList: StateFlow<List<Pair<Int, Int>>> = _indexList
 
     init {
-        viewModelScope.launch {
-            audioRecorder.audioDataFlow.collect { data ->
-                val left = FloatArray(data.size / 2)
-                val right = FloatArray(data.size / 2)
-                data.forEachIndexed { index, fl ->
-                    if (index % 2 == 0) {
-                        left[index / 2] = fl
-                    } else {
-                        right[index / 2] = fl
-                    }
-                }
-                _audioChannel.value = Pair(left, right)
-//                Log.d("_audioChannel", "")
-            }
-        }
+        audioRecorder.audioDataFlow.onEach { data ->
+            val (leftChannel, rightChannel) = splitStereoChannels(data)
+            _audioChannel.emit(leftChannel to rightChannel)
+        }.flowOn(Dispatchers.Default).launchIn(viewModelScope)
+
 
         // 监听原始声道数据，在后台进行处理
         // 同时监听音频数据和参数列表的变化
         combine(audioChannel, processingParams) { rawData, params ->
             // 组合数据：原始音频 + 当前参数列表
             Pair(rawData, params)
-        }.filter { (rawData, params) ->
-            val (left, right) = rawData
-            left.isNotEmpty() && right.isNotEmpty() && params.isNotEmpty()
+        }.filter {
+            !stopUpdate // 停止更新信息
         }.map { (rawData, params) ->
             // 并行处理所有任务
             val result: List<Pair<FloatArray, FloatArray>>
             val timeSpent = measureNanoTime {
                 result = processInParallel(rawData, params)
             }
-            Log.d("processInParallel", "${timeSpent / 1_000_000.0}, params=${params.size}")
+            Log.d("processInParallel", "${ns2ms(timeSpent)}, params=${params.size}")
             result
         }.onEach { processedData ->
-            _cirList.value = processedData
+            _cirList.emit(processedData)
         }.flowOn(Dispatchers.Default).launchIn(viewModelScope)
 
 
-        cirList.filter { list ->
-            list.isNotEmpty()
-        }.map { list ->
+        cirList.map { list ->
             list.map { (leftCir, rightCir) ->
-                Pair(getMaxIndexedValue(leftCir).first, getMaxIndexedValue(rightCir).first)
+                val leftIndexValue = getMaxIndexedValue(leftCir)
+                val rightIndexValue = getMaxIndexedValue(rightCir)
+                Log.d("indexValue", "L: $leftIndexValue, R: $rightIndexValue")
+                Pair(leftIndexValue.first, rightIndexValue.first)
             }
         }.onEach { data ->
-            _indexList.value = data
+            _indexList.emit(data)
         }.flowOn(Dispatchers.Default).launchIn(viewModelScope)
 
 
         // debug
-        indexList.filter { list ->
-            list.isNotEmpty()
-        }.flowOn(Dispatchers.IO).onEach { data ->
-            Log.d("indexList", "$data")
-        }.launchIn(viewModelScope)
+        indexList.onEach { data ->
+            Log.d("indexListBy:f_c", "$data")
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun start(frameLen: Int = 40 * 48) {
+        stopUpdate = false
         viewModelScope.launch {
             audioRecorder.startRecording(frameLen)
         }
@@ -131,28 +126,30 @@ class AudioRecordViewModel : ViewModel() {
     // 并行处理函数：接收原始数据和参数列表，返回所有处理结果
     private suspend fun processInParallel(
         rawData: Pair<FloatArray, FloatArray>, paramsList: List<AudioProcessingParams>
-    ): List<Pair<FloatArray, FloatArray>> {
+    ): List<Pair<FloatArray, FloatArray>> = withContext(Dispatchers.Default) {
+        //coroutineScope创建一个 “局部作用域”，所有子协程（async）会随该作用域的完成/取消而销毁，避免协程逃逸
+
         // 对每个参数创建一个并行任务
         val deferredList = paramsList.map { params ->
             // 用async启动并行协程，指定Dispatchers.Default处理计算密集型任务
-            viewModelScope.async(Dispatchers.Default) {
+            async {
                 processAudioData(rawData, params)
             }
         }
 
         // 等待所有并行任务完成，返回结果列表
-        return deferredList.awaitAll()
+        deferredList.awaitAll()
     }
 
 
     // 并行处理左右声道的音频数据
     private suspend fun processAudioData(
         rawData: Pair<FloatArray, FloatArray>, params: AudioProcessingParams
-    ): Pair<FloatArray, FloatArray> = coroutineScope {  // 用于管理子协程
+    ): Pair<FloatArray, FloatArray> = withContext(Dispatchers.Default) {  // 用于管理子协程
         val (leftChannel, rightChannel) = rawData
 
         // 左声道处理任务（并行）
-        val leftDeferred = async(Dispatchers.Default) {
+        val leftDeferred = async {
             val leftCir = demodulate(
                 floatArray2ComplexArray(leftChannel),
                 params.ZC_hat_prime,
@@ -164,7 +161,7 @@ class AudioRecordViewModel : ViewModel() {
         }
 
         // 右声道处理任务（并行）
-        val rightDeferred = async(Dispatchers.Default) {
+        val rightDeferred = async {
             val rightCir = demodulate(
                 floatArray2ComplexArray(rightChannel),
                 params.ZC_hat_prime,
@@ -186,3 +183,14 @@ data class AudioProcessingParams(
     val N_prime: Int,
     val f_c: Int,
 )
+
+private fun splitStereoChannels(data: FloatArray): Pair<FloatArray, FloatArray> {
+    val sampleCount = data.size / 2
+    val left = FloatArray(sampleCount)
+    val right = FloatArray(sampleCount)
+    for (i in 0 until sampleCount) {
+        left[i] = data[i * 2]       // 左声道：索引0,2,4...
+        right[i] = data[i * 2 + 1]  // 右声道：索引1,3,5...
+    }
+    return left to right
+}

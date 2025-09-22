@@ -24,11 +24,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rangingdemo.CmdPing
@@ -38,6 +40,7 @@ import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
 import com.example.rangingdemo.CmdStartPlay
 import com.example.rangingdemo.CmdStartRecord
+import com.example.rangingdemo.CmdStop
 import com.example.rangingdemo.CmdStopPlay
 import com.example.rangingdemo.CmdStopRecord
 import com.example.rangingdemo.Message
@@ -47,7 +50,8 @@ import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.Param
 import com.example.rangingdemo.ZC_hat
 import com.example.rangingdemo.ZC_hat_prime
-import com.example.rangingdemo.complexArray2StereoFloatArray
+import com.example.rangingdemo.complex.Complex32Array
+import com.example.rangingdemo.consumeComplexArray2StereoFloatArray
 import com.example.rangingdemo.f_s
 import com.example.rangingdemo.get_distance
 import com.example.rangingdemo.jsonFormat
@@ -66,7 +70,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlin.system.measureTimeMillis
 
 // TODO: 应该使用更好的方法
 val leftArrays = Array(10) { i ->
@@ -91,8 +97,8 @@ class RangingActivity : ComponentActivity() {
         serverViewModel.onMessageReceived = { msg ->
             when (msg) {
                 is CmdResponseArray -> {
-                    leftArrays[(msg.f_c - start_f_c) / 1000] = msg.array_left
-                    rightArrays[(msg.f_c - start_f_c) / 1000] = msg.array_right
+                    leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
+                    rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
                     Log.d(
                         "CmdResponseArrayLeft",
                         "fc: ${msg.f_c}, ${msg.array_left.contentToString()}"
@@ -112,30 +118,33 @@ class RangingActivity : ComponentActivity() {
         val clientViewModel: ClientViewModel by viewModels()
         clientViewModel.onMessageReceived = { msg ->
             when (msg) {
-                is CmdStartRecord -> {
-                    audioRecordViewModel.start(N)
-                }
-
-                is CmdStopRecord -> {
-                    audioRecordViewModel.stop()
-                }
-
-                is CmdStartPlay -> {
-                    val audioData = modulate(ZC_hat, N, f_c.intValue, f_s)
-                    val stereoAudioData = complexArray2StereoFloatArray(audioData)
-                    audioTrackViewModel.start(stereoAudioData, -1)
-                }
-
-                is CmdStopPlay -> {
+                is CmdStop -> {
                     audioTrackViewModel.stop()
+                    audioRecordViewModel.stop()
                 }
 
                 is CmdSetParams -> {
                     f_c.intValue = msg.f_c
+
                     val params = msg.params.map { param ->
                         AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
                     }
                     audioRecordViewModel.setProcessingParams(params)
+                    audioRecordViewModel.start(frameLen = N)
+
+                    val timeTaken1 = measureTimeMillis {
+                        val stereoAudioData: FloatArray = consumeComplexArray2StereoFloatArray(
+                            modulate(
+                                ZC_hat,
+                                N,
+                                f_c.intValue,
+                                f_s
+                            )
+                        )
+                        audioTrackViewModel.start(stereoAudioData, -1)
+                    }
+
+                    Log.d("CmdSetParamsTimeTaken", "$timeTaken1 ms")
                 }
 
                 is CmdPing -> {
@@ -144,6 +153,7 @@ class RangingActivity : ComponentActivity() {
 
                 is CmdRequestArray -> {
                     val indexList = audioRecordViewModel.indexList.value
+                    audioRecordViewModel.stopUpdate = true  // 上传数据时停止更新，保持当前数据状态
                     val arrayL = IntArray(indexList.size) { i ->
                         indexList[i].first
                     }
@@ -151,12 +161,10 @@ class RangingActivity : ComponentActivity() {
                         indexList[i].second
                     }
                     clientViewModel.write(
-                        jsonFormat.encodeToString(
-                            CmdResponseArray(
-                                f_c.intValue,
-                                arrayL,
-                                arrayR
-                            ) as Message
+                        CmdResponseArray(
+                            f_c.intValue,
+                            arrayL,
+                            arrayR
                         )
                     )
                 }
@@ -168,6 +176,9 @@ class RangingActivity : ComponentActivity() {
         setContent {
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val cirList by audioRecordViewModel.cirList.collectAsStateWithLifecycle(
+                        initialValue = emptyList()
+                    )
 
                     Column(modifier = Modifier.padding(innerPadding)) {
                         Column(
@@ -183,7 +194,7 @@ class RangingActivity : ComponentActivity() {
 
                         NewClientUI(host)
                         HorizontalDivider(thickness = 2.dp)
-                        MpChartWithStateFlow(f_c = f_c.intValue, audioRecordViewModel.cirList)
+                        MpChartWithStateFlow(f_c = f_c.intValue, cirList)
 //                        StateFlow2()
                     }
                 }
@@ -193,7 +204,7 @@ class RangingActivity : ComponentActivity() {
 }
 
 // client专用
-private var f_c = mutableIntStateOf(19000)
+private var f_c = mutableIntStateOf(0)
 
 private val start_f_c = 18000
 private val step = 1000
@@ -213,6 +224,8 @@ fun NewServerUI() {
     ) {
         Text("Server")
     }
+    val scope = rememberCoroutineScope()
+
 
     Row {
         Button(onClick = {
@@ -225,83 +238,24 @@ fun NewServerUI() {
         Spacer(Modifier.padding(10.dp))
         Button(
             onClick = {
-                val deviceCnt = serverViewModel.clientConnections.size
-                val paramsList = (0 until deviceCnt).map { index ->
-                    Param(48 * 40, start_f_c + step * index, 1, 37)
-                }
-
-                serverViewModel.viewModelScope.launch {
-                    val deferredJobs = serverViewModel.clientConnections.entries.withIndex()
-                        .map { (index, entry) ->
-                            // 用async启动并行协程
-                            async(Dispatchers.IO) {
-                                serverViewModel.write(
-                                    entry.key,
-                                    jsonFormat.encodeToString(
-                                        CmdSetParams(
-                                            18000 + 1000 * index,
-                                            paramsList.toTypedArray()
-                                        ) as Message
-                                    )
-                                )
-                                delay(10)
-                            }
-                        }
-                    // 等待所有并行任务完成
-                    deferredJobs.awaitAll()
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStartRecord() as Message // 必须要转成基类
-                        )
-                    )
-                    delay(100)
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStartPlay() as Message // 必须要转成基类
-                        )
-                    )
-
-                    delay(1000)
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdRequestArray() as Message // 必须要转成基类
-                        )
-                    )
-                    delay(100)
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStopPlay() as Message // 必须要转成基类
-                        )
-                    )
-                    delay(100)
-
-                    serverViewModel.write2AllClient(
-                        jsonFormat.encodeToString(
-                            CmdStopRecord() as Message // 必须要转成基类
-                        )
-                    )
-
-                    delay(100)
-                    // TODO: 多设备适配
-                    distance = get_distance(
-                        m_aa = leftArrays[0][0],
-                        m_ab = leftArrays[1][0],
-                        m_ba = leftArrays[0][1],
-                        m_bb = leftArrays[1][1],
-                        N_prime = N,
-                        N = N
-                    )
-                    Log.d(
-                        "calculateResult",
-                        distance.toString()
-                    )
-                }
-
+                serverViewModel.performRangingJob(start_f_c, step)
             }
         ) { Text("start ranging") }
+    }
+    val cmdResponseArray by serverViewModel.receivedMsgList.collectAsStateWithLifecycle()
+    if (cmdResponseArray.size > 1) {
+        for (msg in cmdResponseArray) {
+            leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
+            rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
+        }
+        distance = get_distance(
+            m_aa = rightArrays[0][0],
+            m_ab = rightArrays[1][0],
+            m_ba = rightArrays[0][1],
+            m_bb = rightArrays[1][1],
+            N_prime = N,
+            N = N
+        )
     }
 
     Text("Server received: ${serverViewModel.receivedMsg.collectAsState().value}")
@@ -331,7 +285,7 @@ fun NewClientUI(host: String) {
         }
     }) { Text(if (!isClientRunning) "start client" else "stop client") }
     Text("fc = $f_c")
-    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
+//    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
 }
 
 

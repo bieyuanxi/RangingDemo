@@ -1,16 +1,8 @@
 package com.example.rangingdemo
 
-import android.annotation.SuppressLint
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.AudioTrack
-import android.media.AudioTrack.MODE_STATIC
-import android.media.AudioTrack.PERFORMANCE_MODE_LOW_LATENCY
-import android.media.MediaRecorder
-import android.util.Log
 import com.example.rangingdemo.complex.Complex32
 import com.example.rangingdemo.complex.Complex32Array
+import com.example.rangingdemo.lib.LibRustFFT
 import java.text.DecimalFormat
 import kotlin.math.sin
 
@@ -48,19 +40,18 @@ fun generateSimpleStereoAudio(
 }
 
 /**
- * 将复数数组转成双声道音频
+ * 消耗Complex32Array，并将复数数组转成双声道音频数组
  * 只会记录实数部分，忽略虚数部分
- * @param leftArray 左声道复数数组
- * @param rightArray 右声道复数数组，只传入左声道默认左右声道数据相同
+ * @param leftArray 左声道复数数组，将被消耗，无法再使用
  * @param leftRate 左声道倍率
  * @param rightRate 右声道倍率
  */
-fun complexArray2StereoFloatArray(leftArray: Complex32Array, rightArray: Complex32Array = leftArray,leftRate: Float = 1.0f, rightRate: Float = 1.0f): FloatArray {
-    assert(leftArray.size == rightArray.size)
-    val stereoAudioData = FloatArray(leftArray.size * 2)
-    for (i in 0 until leftArray.size) {
-        stereoAudioData[2 * i] = leftRate * leftArray[i].real
-        stereoAudioData[2 * i + 1] = rightRate * rightArray[i].real
+fun consumeComplexArray2StereoFloatArray(array: Complex32Array, leftRate: Float = 1.0f, rightRate: Float = 1.0f): FloatArray {
+    val stereoAudioData = array.inner
+    array.clear()
+
+    for (i in stereoAudioData.indices.step(2)) {
+        stereoAudioData[i + 1] = stereoAudioData[i]
     }
     return stereoAudioData
 }
@@ -89,9 +80,7 @@ fun conjugate(array: Complex32Array): Complex32Array {
  */
 fun magnitude(array: Complex32Array): FloatArray {
     val result = FloatArray(array.size)
-    for (i in result.indices) {
-        result[i] = array[i].abs()
-    }
+    LibRustFFT.INSTANCE.magnitude32(array.inner, array.size, result)
     return result
 }
 
@@ -113,4 +102,19 @@ fun getMaxIndexedValue(array: FloatArray): Pair<Int, Float> {
 
 fun ns2ms(ns: Long) = (ns / 1_000_000.0f)
 
-fun formatNumber(number: Number) = DecimalFormat("#.00").format(number)
+fun formatNumber(number: Number): String = DecimalFormat("#.00").format(number)
+
+
+fun shiftLeft(x: FloatArray, shift: Int): FloatArray {
+    val n = x.size
+    var actualShift = shift % n
+    while (actualShift < 0) {
+        actualShift += n
+    }
+    val newArray = x.clone()
+    newArray.reverse(0, actualShift)
+    newArray.reverse(actualShift, n)
+    newArray.reverse()
+
+    return newArray
+}

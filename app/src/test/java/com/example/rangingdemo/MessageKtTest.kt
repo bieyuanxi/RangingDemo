@@ -35,7 +35,8 @@ class MessageKtTest {
         run {
             val msg: Message = CmdSetParams(
                 f_c = 19000,
-                arrayOf(Param(960 * 40, 19000, 0, 81), Param(960 * 20, 17000, 0, 41))
+                N = 480 * 40,
+                arrayOf(Param(19000, 0, 81), Param(17000, 0, 41))
             )
             val string = jsonFormat.encodeToString(msg)
             println(string)

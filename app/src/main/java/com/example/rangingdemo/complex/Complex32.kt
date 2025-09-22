@@ -32,8 +32,13 @@ value class Complex32(private val inner: Long) {
 
     // 复数乘法
     operator fun times(other: Complex32): Complex32 {
-        val newReal = real * other.real - imag * other.imag
-        val newImag = real * other.imag + imag * other.real
+        val thisR = this.real
+        val thisI = this.imag
+        val otherR = other.real
+        val otherI = other.imag
+
+        val newReal = thisR * otherR - thisI * otherI
+        val newImag = thisR * otherI + thisI * otherR
         return Complex32(newReal, newImag)
     }
 

@@ -13,7 +13,13 @@ interface LibRustFFT : Library {
 //        // 引用LibRustFFT.INSTANCE时加载
 //        val INSTANCE: LibRustFFT = Native.load("rust_fft_wrapper", LibRustFFT::class.java)
     }
+
+    @Deprecated("use try_fft instead")
     fun fft_forward(input: Pointer, output: Pointer, n: Int, inverse: Boolean)
+
+    fun try_fft(ptr: FloatArray, n: Int, inverse: Boolean)
+
+    fun magnitude32(inputPtr: FloatArray, n: Int, outputPtr: FloatArray)
 
     fun add(a: Int, b: Int): Int
 }

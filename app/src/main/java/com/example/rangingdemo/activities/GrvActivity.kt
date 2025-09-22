@@ -18,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 
@@ -30,7 +31,7 @@ class GvrActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            val angle = rotationAngleViewModel.rotationAngle.collectAsState()
+            val angle = rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
 
             RangingDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->

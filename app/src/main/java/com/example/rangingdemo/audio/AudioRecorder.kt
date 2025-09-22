@@ -8,10 +8,14 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
+import kotlin.system.measureTimeMillis
 
 class AudioRecorder : CoroutineScope {
     private val job = Job()
@@ -23,16 +27,19 @@ class AudioRecorder : CoroutineScope {
     private var isRecording = false
 
     // 音频数据Flow（对外暴露不可变Flow）
-    private val _audioDataFlow = MutableStateFlow(floatArrayOf())
-    val audioDataFlow: StateFlow<FloatArray> = _audioDataFlow
+    private val _audioDataFlow = MutableSharedFlow<FloatArray>()
+    val audioDataFlow: SharedFlow<FloatArray> = _audioDataFlow
 
     fun startRecording(frameLen: Int = 40 * 48) = launch {
         if (isRecording) return@launch
         isRecording = true
 
-        // 初始化AudioRecord
-        audioRecord = createDefaultAudioRecord(48000)
-        audioRecord?.startRecording()
+        val timeTaken = measureTimeMillis {
+            // 初始化AudioRecord
+            audioRecord = createDefaultAudioRecord(48000)
+            audioRecord?.startRecording()
+        }
+        Log.d("audioRecordTimeTaken", "$timeTaken ms")
 
         Log.d("bufferSizeInFrames", "${audioRecord?.bufferSizeInFrames}")
         audioRecord?.let {
@@ -42,11 +49,14 @@ class AudioRecorder : CoroutineScope {
         val buffer = FloatArray(frameLen * 2) // 立体声需要×2
         while (isRecording) {
             // 读取浮点音频数据（返回值为实际读取的样本数）
-            val readSize = audioRecord?.read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
-            if (readSize != null && readSize > 0) {
-                // 发送数据到Flow（复制一份避免缓冲区覆盖）
-                _audioDataFlow.value = buffer.copyOf(readSize)
-//                Log.d("_audioDataFlow", "$readSize")
+            audioRecord?.apply {
+                val readSize = read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
+                if (readSize == buffer.size) {
+                    // 发送数据到Flow（复制一份避免缓冲区覆盖）
+                    _audioDataFlow.emit(buffer.copyOf(readSize))
+                } else {
+                    Log.d("audioRecord", "drop data cause of size: $readSize < ${buffer.size}")
+                }
             }
         }
     }
@@ -83,7 +93,7 @@ private fun createDefaultAudioRecord(sampleRate: Int): AudioRecord {
     val bufferSize: Int = (minBufferSize * 1.5).toInt()  // 似乎系统实际至少会采用1.5倍minBufferSize
     Log.d("BufferSizeInBytes", "$bufferSize")
     return AudioRecord.Builder()
-        .setAudioSource(MediaRecorder.AudioSource.MIC)
+        .setAudioSource(MediaRecorder.AudioSource.UNPROCESSED)
         .setAudioFormat(
             AudioFormat.Builder()
                 .setEncoding(audioFormat)

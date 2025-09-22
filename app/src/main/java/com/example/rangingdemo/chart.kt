@@ -33,14 +33,15 @@ import kotlinx.coroutines.flow.StateFlow
 @Composable
 fun MpChartWithStateFlow(
     f_c: Int,
-    cirListStateFlow: StateFlow<List<Pair<FloatArray, FloatArray>>>,
+    cirList: List<Pair<FloatArray, FloatArray>>,
     viewModel: AudioRecordViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val processingParams by viewModel.processingParams.collectAsStateWithLifecycle()
+    var redIndex by remember { mutableIntStateOf(0) }
 
     val isLeftVisibleList = remember(processingParams) {
-        mutableStateListOf<Boolean>().apply() {
+        mutableStateListOf<Boolean>().apply {
             repeat(processingParams.size) {
                 add(true)
             }
@@ -48,7 +49,7 @@ fun MpChartWithStateFlow(
     }
 
     val isRightVisibleList = remember(processingParams) {
-        mutableStateListOf<Boolean>().apply() {
+        mutableStateListOf<Boolean>().apply {
             repeat(processingParams.size) {
                 add(true)
             }
@@ -65,6 +66,9 @@ fun MpChartWithStateFlow(
 
     Column {
         processingParams.forEachIndexed { i, params ->
+            if (params.f_c == f_c) {
+                redIndex = i
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("f_c=${params.f_c} ")
                 Text("lChannel")
@@ -75,7 +79,6 @@ fun MpChartWithStateFlow(
         }
     }
 
-    val cirList by cirListStateFlow.collectAsStateWithLifecycle()
     val lineDataSetList = remember { mutableStateListOf<LineDataSet>() }
 
     LaunchedEffect(cirList, isLeftVisibleList.toList(), isRightVisibleList.toList()) {
@@ -95,12 +98,18 @@ fun MpChartWithStateFlow(
 
             // 创建数据集
             val lDataSet = LineDataSet(lEntry, "${fcList[index]}L").apply {
-                color = Color.BLUE
+                if (redIndex == index) {
+                    color = Color.RED
+                    setCircleColor(Color.RED)
+                }
                 isVisible = isLeftVisibleList.getOrElse(index) { true }
                 setDrawValues(false)
             }
             val rDataSet = LineDataSet(rEntry, "${fcList[index]}R").apply {
-                color = Color.GREEN
+                if (redIndex == index) {
+                    color = Color.RED
+                    setCircleColor(Color.RED)
+                }
                 isVisible = isRightVisibleList.getOrElse(index) { true }
                 setDrawValues(false)
             }
