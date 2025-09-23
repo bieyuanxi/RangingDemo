@@ -12,16 +12,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rangingdemo.ui.components.AngleCircularIndicator
 import com.example.rangingdemo.CmdPing
 import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray
@@ -62,6 +62,8 @@ import kotlin.system.measureTimeMillis
 import com.example.rangingdemo.ui.components.RotatePhoneDialog
 import com.example.rangingdemo.getAngleFromFile
 import com.example.rangingdemo.readCsv
+import com.example.rangingdemo.ui.components.DeviceInfo
+import com.example.rangingdemo.ui.components.DeviceMapVisualizer
 import java.io.File
 
 class RangingActivity : ComponentActivity() {
@@ -269,7 +271,7 @@ fun AngleUI() {
     val audioRecordViewModel: AudioRecordViewModel = viewModel()
     val rotationAngleViewModel: RotationAngleViewModel = viewModel()
 
-    val angle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
+    val grVAngle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
 
     // 状态管理
     var isRotatePhoneDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
@@ -280,9 +282,11 @@ fun AngleUI() {
         FlowDataSaver(rotationAngleViewModel.viewModelScope)
     }
 
+    val deviceInfos = remember { mutableStateListOf<DeviceInfo>() }
+
     var angleOffset by remember { mutableFloatStateOf(0.0f) }
 
-    Text("首先开启服务端，等待客户端连接后可开始测角工作")
+    Text("客户端连接后可开始测角工作")
     Row {
         Button(
             onClick = {
@@ -321,6 +325,8 @@ fun AngleUI() {
             isAngleDialogShowing = !isAngleDialogShowing
             if (isAngleDialogShowing) {
                 rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
 
                 val paramsArray = allocateParamList(
                     deviceCnt = 1,
@@ -352,23 +358,28 @@ fun AngleUI() {
 
                 flowSaver.close()   // 关闭文件流
 
-                // TODO: 调用算法
+                // 调用算法
                 val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
                 val (angleRaw, diffRaw) = readCsv(inputFile)
                 val angleOffsetCandidate = calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
                 angleOffset = angleOffsetCandidate.toFloat()
+                deviceInfos.add(DeviceInfo(1f, angleOffset, "device"))
             }
         }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束") }
     }
 
-    Text("angle_algo_output: %.1f".format(angleOffset))
-    Text("grv_angle: %.1f".format(angle))
-    Text("angle_result = %.1f".format(angleOffset - angle))
+    Text("algo: %.1f°, grv: %.1f°, angle = %.1f°".format(angleOffset, grVAngle, angleOffset - grVAngle))
+
+    DeviceMapVisualizer(
+        deviceInfos = deviceInfos,
+        currentAngle = grVAngle,
+        modifier = Modifier.fillMaxWidth().height(200.dp)
+    )
 
     // 旋转提示弹窗
     RotatePhoneDialog(
         isShowing = isRotatePhoneDialogShowing,
-        rotationProgress = if (angle < 0) 360 + angle else angle,
+        rotationProgress = if (grVAngle < 0) 360 + grVAngle else grVAngle,
         onDismiss = {   // 旋转完成
             serverViewModel.write2AllClient(CmdStop())
             audioRecordViewModel.stop()
@@ -385,9 +396,9 @@ fun AngleUI() {
     )
 
 
-    if (isAngleDialogShowing) {
-        AngleCircularIndicator(angle)
-    }
+//    if (isAngleDialogShowing) {
+//        AngleCircularIndicator(angle)
+//    }
 
 }
 
