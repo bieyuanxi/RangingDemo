@@ -290,6 +290,11 @@ fun AngleUI() {
     Row {
         Button(
             onClick = {
+                rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
+                isRotatePhoneDialogShowing = true  // 提示旋转手机
+
                 val paramsArray = allocateParamList(
                     deviceCnt = 1,
                     start_f_c,
@@ -308,10 +313,6 @@ fun AngleUI() {
                     N,
                     paramsArray
                 ))
-
-
-                rotationAngleViewModel.calibrate()  // 校准为0
-                isRotatePhoneDialogShowing = true  // 提示旋转手机
 
                 // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
                 val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
@@ -389,9 +390,11 @@ fun AngleUI() {
             // 调用算法
             val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
             val angleOffsetCandidate = getAngleFromFile(inputFile)
+            // FIXME: IndexOutOfBoundsException: Empty list doesn't contain element at index 0.
             angleOffset = angleOffsetCandidate[0].toFloat()
             // 关闭弹窗
             isRotatePhoneDialogShowing = false
+            deviceInfos.add(DeviceInfo(1f, angleOffset, "device"))
         }
     )
 
