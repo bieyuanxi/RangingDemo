@@ -48,7 +48,7 @@ import java.io.File
 
 
 class AudioActivity : ComponentActivity() {
-    private val f_c = 19000
+    private val f_c = 18000
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
