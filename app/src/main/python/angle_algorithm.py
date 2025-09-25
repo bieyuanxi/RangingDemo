@@ -24,6 +24,10 @@ def calculate_angle(angle_list, diff_list):
     """
     column = 'diff'
     df = pd.DataFrame({"angle": angle_list, 'diff': diff_list})
+
+    # 删除包含NaN值的行（同时删除angle和diff中的无效数据）
+    df = df.dropna(subset=["angle", "diff"])
+
     df["angle_unwrap"] = np.unwrap(np.deg2rad(df["angle"])) * 180 / np.pi
     df_sorted = df.sort_values(by="angle_unwrap", ascending=True)
     diff_df = sliding_window_mean(df_sorted, column, y=5)

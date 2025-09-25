@@ -382,7 +382,7 @@ fun NewServerUI() {
                     )
                 )
             }
-        }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束") }
+        }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束测角") }
     }
 
     Text(
