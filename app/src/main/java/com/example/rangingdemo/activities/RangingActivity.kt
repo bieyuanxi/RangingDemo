@@ -212,6 +212,9 @@ fun NewServerUI() {
     // 已建立连接的设备数量
     val clientCounter by remember { serverViewModel.clientCounter }
 
+    val deviceInfos = remember { mutableStateListOf<DeviceInfo>() }
+    var angleOffset by remember { mutableFloatStateOf(0.0f) }
+
     var distance by remember { mutableFloatStateOf(0f) }
     if (cmdResponseArrayCount > 1 && cmdResponseArrayCount == clientCounter) {    // 收到全部设备数据时计算
         distance = get_distance(    // 这里只计算前两个设备的距离
@@ -222,6 +225,12 @@ fun NewServerUI() {
             N_prime = N,
             N = N
         )
+        if (deviceInfos.isNotEmpty()) {
+            deviceInfos[0].distance = distance  // TODO: 多设备
+        } else {
+            deviceInfos.add(DeviceInfo(distance, angleOffset, "device"))
+        }
+
     }
 
     Column(
@@ -256,7 +265,167 @@ fun NewServerUI() {
 
     Text("distance: $distance")
 
-    AngleUI()
+    val context = LocalContext.current
+
+    val audioRecordViewModel: AudioRecordViewModel = viewModel()
+    val rotationAngleViewModel: RotationAngleViewModel = viewModel()
+
+    val grVAngle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
+
+    // 状态管理
+    var isRotatePhoneDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
+    var isAngleDialogShowing by remember { mutableStateOf(false) } // 摇一摇
+
+    // 保存数据
+    val flowSaver = remember {
+        FlowDataSaver(rotationAngleViewModel.viewModelScope)
+    }
+
+
+
+
+
+    Text("客户端连接后可开始测角工作")
+    Row {
+        Button(
+            onClick = {
+                rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
+                isRotatePhoneDialogShowing = true  // 提示旋转手机
+
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
+
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
+
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
+            }
+        ) { Text("测角（发现模式）") }  // 以旋转360度的方式发现周围的设备（通过录制音频）
+
+        Button(onClick = {
+            isAngleDialogShowing = !isAngleDialogShowing
+            if (isAngleDialogShowing) {
+                rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
+
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
+
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
+
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
+            } else {
+                serverViewModel.write2AllClient(CmdStop())
+                audioRecordViewModel.stop()
+
+                flowSaver.close()   // 关闭文件流
+
+                // 调用算法
+                val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+                val (angleRaw, diffRaw) = readCsv(inputFile)
+                val angleOffsetCandidate =
+                    calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
+                angleOffset = angleOffsetCandidate.toFloat()
+                deviceInfos.add(
+                    DeviceInfo(
+                        distance = if (distance > 0) distance else 1e-3f,
+                        angleOffset,
+                        "device"
+                    )
+                )
+            }
+        }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束") }
+    }
+
+    Text(
+        "algo: %.1f°, grv: %.1f°, angle = %.1f°".format(
+            angleOffset,
+            grVAngle,
+            angleOffset - grVAngle
+        )
+    )
+
+    DeviceMapVisualizer(
+        deviceInfos = deviceInfos,
+        currentAngle = grVAngle,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+    )
+
+    // 旋转提示弹窗
+    RotatePhoneDialog(
+        isShowing = isRotatePhoneDialogShowing,
+        rotationProgress = if (grVAngle < 0) 360 + grVAngle else grVAngle,
+        onDismiss = {   // 旋转完成
+            serverViewModel.write2AllClient(CmdStop())
+            audioRecordViewModel.stop()
+
+            flowSaver.close()   // 关闭文件流
+
+            // 调用算法
+            val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+            val angleOffsetCandidate = getAngleFromFile(inputFile)
+            // FIXME: IndexOutOfBoundsException: Empty list doesn't contain element at index 0.
+            angleOffset = angleOffsetCandidate[0].toFloat()
+            // 关闭弹窗
+            isRotatePhoneDialogShowing = false
+            deviceInfos.add(DeviceInfo(if (distance > 0) distance else 1e-3f, angleOffset, "device"))
+        }
+    )
+
+
+//    if (isAngleDialogShowing) {
+//        AngleCircularIndicator(angle)
+//    }
 }
 
 
@@ -308,17 +477,22 @@ fun AngleUI() {
                 audioRecordViewModel.setProcessingParams(params)
                 audioRecordViewModel.start()
 
-                serverViewModel.write2AllClient(CmdSetParams(
-                    paramsArray[0].f_c, // deviceCnt == 1
-                    N,
-                    paramsArray
-                ))
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
 
                 // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
                 val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
                 val outputFile = File(context.filesDir, fileName)
                 flowSaver.init(outputFile)
-                flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
             }
         ) { Text("测角（发现模式）") }  // 以旋转360度的方式发现周围的设备（通过录制音频）
 
@@ -342,17 +516,22 @@ fun AngleUI() {
                 audioRecordViewModel.setProcessingParams(params)
                 audioRecordViewModel.start()
 
-                serverViewModel.write2AllClient(CmdSetParams(
-                    paramsArray[0].f_c, // deviceCnt == 1
-                    N,
-                    paramsArray
-                ))
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
 
                 // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
                 val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
                 val outputFile = File(context.filesDir, fileName)
                 flowSaver.init(outputFile)
-                flowSaver.saveFlows(rotationAngleViewModel.rotationAngle, audioRecordViewModel.indexList)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
             } else {
                 serverViewModel.write2AllClient(CmdStop())
                 audioRecordViewModel.stop()
@@ -362,19 +541,28 @@ fun AngleUI() {
                 // 调用算法
                 val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
                 val (angleRaw, diffRaw) = readCsv(inputFile)
-                val angleOffsetCandidate = calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
+                val angleOffsetCandidate =
+                    calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
                 angleOffset = angleOffsetCandidate.toFloat()
                 deviceInfos.add(DeviceInfo(1f, angleOffset, "device"))
             }
         }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束") }
     }
 
-    Text("algo: %.1f°, grv: %.1f°, angle = %.1f°".format(angleOffset, grVAngle, angleOffset - grVAngle))
+    Text(
+        "algo: %.1f°, grv: %.1f°, angle = %.1f°".format(
+            angleOffset,
+            grVAngle,
+            angleOffset - grVAngle
+        )
+    )
 
     DeviceMapVisualizer(
         deviceInfos = deviceInfos,
         currentAngle = grVAngle,
-        modifier = Modifier.fillMaxWidth().height(200.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp)
     )
 
     // 旋转提示弹窗

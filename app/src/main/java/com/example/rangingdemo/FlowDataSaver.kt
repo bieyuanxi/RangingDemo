@@ -68,7 +68,7 @@ class FlowDataSaver(private val scope: CoroutineScope) {
         val combinedFlow = indexFlow.filter {
             it.isNotEmpty()
         }.combine(angleFlow) { indexList, angle ->
-            val index = indexList[0]
+            val index = indexList[0]    // TODO: 取不同的流
             val left = index.first
             val right = index.second
             FlowData(

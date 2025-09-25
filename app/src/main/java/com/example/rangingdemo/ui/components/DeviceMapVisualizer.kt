@@ -20,7 +20,7 @@ import kotlin.math.absoluteValue
 
 // 数据类：存储其他手机的「距离」和「角度」（角度单位：度）
 data class DeviceInfo(
-    val distance: Float,   // 与自身的距离
+    var distance: Float,   // 与自身的距离
     val angle: Float,      // 与自身的角度（0度→右，90度→上，180度→左，270度→下）
     val deviceName: String  // 设备标识（用于标签显示）
 )
@@ -48,15 +48,17 @@ fun DeviceMapVisualizer(
     val selfRadiusPx = with(density) { selfRadius.toPx() }
     val otherRadiusPx = with(density) { otherRadius.toPx() }
     val lineWidthPx = with(density) { 2.dp.toPx() }
+    // 距离文本的背景和字体大小相关的尺寸
+    val distanceTextBgRadius = with(density) { 8.dp.toPx() }
 
     Canvas(modifier) {
         // 计算屏幕中心（自身手机的位置）
         val centerX = size.width / 2f
-        val centerY = size.height / 2f
+        val centerY = size.height * 0.8f
 
         // 计算缩放因子（确保所有其他手机都能在屏幕内显示）
         val maxDistance = if (deviceInfos.isNotEmpty()) deviceInfos.maxOf { it.distance } else 100f
-        val maxAvailableDistance = max(centerX, centerY) * 0.4f // 屏幕最大可用距离（避免超出屏幕）
+        val maxAvailableDistance = max(centerX, centerY) * 0.6f // 屏幕最大可用距离（避免超出屏幕）
         val scale = if (maxDistance > 0) maxAvailableDistance / maxDistance else 1f
 
         // 遍历绘制「其他手机」和「连接线」
@@ -75,6 +77,35 @@ fun DeviceMapVisualizer(
                 start = Offset(centerX, centerY),
                 end = Offset(otherX, otherY),
                 strokeWidth = lineWidthPx
+            )
+
+            // 计算连线中点（用于显示距离）
+            val midPointX = (centerX + otherX) / 2f
+            val midPointY = (centerY + otherY) / 2f
+
+            // 绘制距离文本背景（半透明矩形）
+            val distanceText = textMeasurer.measure("%.2f m".format(device.distance))
+            drawRoundRect(
+                color = Color.Black.copy(alpha = 0.7f),
+                topLeft = Offset(
+                    x = midPointX - distanceText.size.width / 2f - distanceTextBgRadius,
+                    y = midPointY - distanceText.size.height / 2f - distanceTextBgRadius
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    width = distanceText.size.width + 2 * distanceTextBgRadius,
+                    height = distanceText.size.height + 2 * distanceTextBgRadius
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(distanceTextBgRadius)
+            )
+
+            // 绘制距离文本
+            drawText(
+                textLayoutResult = distanceText,
+                color = Color.White,
+                topLeft = Offset(
+                    x = midPointX - distanceText.size.width / 2f,
+                    y = midPointY - distanceText.size.height / 2f
+                )
             )
 
             // 绘制「其他手机」（小圆）
