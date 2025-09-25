@@ -46,7 +46,6 @@ class DebugActivity : ComponentActivity() {
                         WifiDirectUIBtn()
                         GrvUIButton()
                         AngleUIBtn()
-                        PhoneNetworkExample()
                     }
 
                 }

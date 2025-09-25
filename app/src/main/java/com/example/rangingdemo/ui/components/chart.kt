@@ -76,9 +76,12 @@ fun MpChartWithStateFlow(
                 }
                 // TODO: 使用更好的策略
                 if (indexList.size == processingParams.size) {  // 防止状态不同步
-                    Text("mL: ${indexList[i].first}")
-                    Text("mR: ${indexList[i].second}")
-                    Text("delta: ${indexList[i].first.second - indexList[i].second.second}")
+                    val mL = "(%d, %.2E)".format(indexList[i].first.first, indexList[i].first.second)
+                    val mR = "(%d, %.2E)".format(indexList[i].second.first, indexList[i].second.second)
+                    val delta = "%.2E".format(indexList[i].first.second - indexList[i].second.second)
+                    Text("mL: $mL, mR: $mR")
+
+                    Text("delta: $delta")
                 }
 
             }

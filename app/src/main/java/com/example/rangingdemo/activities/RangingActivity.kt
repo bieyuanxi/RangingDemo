@@ -282,10 +282,6 @@ fun NewServerUI() {
     }
 
 
-
-
-
-    Text("客户端连接后可开始测角工作")
     Row {
         Button(
             onClick = {
