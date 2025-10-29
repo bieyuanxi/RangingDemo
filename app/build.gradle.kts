@@ -56,6 +56,7 @@ chaquopy {
         version = "3.12"
         pip {
             options("--extra-index-url", "https://pypi.tuna.tsinghua.edu.cn/simple")
+            options("--index-url", "https://chaquo.com/pypi-13.1")
             install("numpy")
             install("pandas")
         }
