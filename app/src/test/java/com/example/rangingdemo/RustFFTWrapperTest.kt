@@ -38,4 +38,16 @@ class RustFFTWrapperTest() {
     fun ifft() {
         TODO()
     }
+
+    @Test
+    fun ZC() {
+        val u = 1
+        val q = 257 // 素数
+        val N = q
+        val zcSequence = genZCSequence(u, q, N)
+        val ZC = RustFFTWrapper.fft(zcSequence)
+        for (i in 0 until ZC.size) {
+            println(ZC[i].abs())
+        }
+    }
 }

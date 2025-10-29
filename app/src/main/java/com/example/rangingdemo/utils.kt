@@ -1,5 +1,6 @@
 package com.example.rangingdemo
 
+import android.util.Log
 import com.example.rangingdemo.complex.Complex32
 import com.example.rangingdemo.complex.Complex32Array
 import com.example.rangingdemo.lib.LibRustFFT
@@ -35,14 +36,14 @@ fun generateSimpleStereoAudio(
 
         time += timeStep
     }
-
+    Log.d("simpleStereoAudio", getMaxIndexedValue(pcmData).toString())
     return pcmData
 }
 
 /**
  * 消耗Complex32Array，并将复数数组转成双声道音频数组
- * 只会记录实数部分，忽略虚数部分
- * @param leftArray 左声道复数数组，将被消耗，无法再使用
+ * 复用内部数组,拷贝实数部分（左声道）到右声道
+ * @param array 左声道复数数组，将被消耗，无法再使用
  * @param leftRate 左声道倍率
  * @param rightRate 右声道倍率
  */
@@ -52,7 +53,11 @@ fun consumeComplexArray2StereoFloatArray(array: Complex32Array, leftRate: Float 
 
     for (i in stereoAudioData.indices.step(2)) {
         stereoAudioData[i + 1] = stereoAudioData[i]
+
+        stereoAudioData[i] = leftRate * stereoAudioData[i]
+        stereoAudioData[i + 1] = rightRate * stereoAudioData[i + 1]
     }
+    Log.d("stereoAudioData", "${getMaxIndexedValue(stereoAudioData)}")
     return stereoAudioData
 }
 

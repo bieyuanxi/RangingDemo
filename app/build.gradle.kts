@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization") version "2.1.21"
+    id("com.chaquo.python")
 }
 
 android {
@@ -14,9 +15,13 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {
@@ -46,6 +51,17 @@ android {
     }
 }
 
+chaquopy {
+    defaultConfig {
+        version = "3.12"
+        pip {
+            options("--extra-index-url", "https://pypi.tuna.tsinghua.edu.cn/simple")
+            install("numpy")
+            install("pandas")
+        }
+    }
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -60,6 +76,11 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.17.0@aar")   // @aar是必需的，否则会找不到库
     implementation(libs.github.mpandroidchart)
     implementation(libs.kotlinx.serialization.json)
+    // Apache Commons CSV：处理CSV文件
+    implementation("org.apache.commons:commons-csv:1.10.0")
+    // EJML：矩阵运算与最小二乘求解（轻量级）
+    implementation("org.ejml:ejml-core:0.43.1")
+    implementation("org.ejml:ejml-simple:0.43.1")
     testImplementation(libs.net.jna)    // 本地单元测试需要使用不带@aar的包
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

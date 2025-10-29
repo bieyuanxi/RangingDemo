@@ -1,12 +1,10 @@
-package com.example.rangingdemo
+package com.example.rangingdemo.ui.components
 
 import android.graphics.Color
 import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,7 +25,6 @@ import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
-import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun MpChartWithStateFlow(
@@ -38,6 +34,7 @@ fun MpChartWithStateFlow(
     modifier: Modifier = Modifier
 ) {
     val processingParams by viewModel.processingParams.collectAsStateWithLifecycle()
+    val indexList by viewModel.indexList.collectAsStateWithLifecycle()
     var redIndex by remember { mutableIntStateOf(0) }
 
     val isLeftVisibleList = remember(processingParams) {
@@ -57,11 +54,7 @@ fun MpChartWithStateFlow(
     }
 
     val fcList = remember(processingParams) {
-        buildList {
-            processingParams.forEach {
-                add(it.f_c)
-            }
-        }
+        processingParams.map { it.f_c }
     }
 
     Column {
@@ -69,12 +62,28 @@ fun MpChartWithStateFlow(
             if (params.f_c == f_c) {
                 redIndex = i
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("f_c=${params.f_c} ")
-                Text("lChannel")
-                Checkbox(checked = isLeftVisibleList[i], onCheckedChange = { isLeftVisibleList[i] = it })
-                Text("rChannel")
-                Checkbox(checked = isRightVisibleList[i], onCheckedChange = { isRightVisibleList[i] = it })
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("f_c=${params.f_c} ")
+                    Text("lChannel")
+                    Checkbox(
+                        checked = isLeftVisibleList[i],
+                        onCheckedChange = { isLeftVisibleList[i] = it })
+                    Text("rChannel")
+                    Checkbox(
+                        checked = isRightVisibleList[i],
+                        onCheckedChange = { isRightVisibleList[i] = it })
+                }
+                // TODO: 使用更好的策略
+                if (indexList.size == processingParams.size) {  // 防止状态不同步
+                    val mL = "(%d, %.2E)".format(indexList[i].first.first, indexList[i].first.second)
+                    val mR = "(%d, %.2E)".format(indexList[i].second.first, indexList[i].second.second)
+                    val delta = "%.2E".format(indexList[i].first.second - indexList[i].second.second)
+                    Text("mL: $mL, mR: $mR")
+
+                    Text("delta: $delta")
+                }
+
             }
         }
     }
@@ -86,6 +95,11 @@ fun MpChartWithStateFlow(
             it.clear()  // 释放LineDataSet持有的entries
         }
         lineDataSetList.clear() // 清空数据
+
+        // TODO: 使用更好的策略
+        if (cirList.size != isLeftVisibleList.size) {   // 防止状态不同步
+            return@LaunchedEffect
+        }
 
         cirList.forEachIndexed { index, pair ->
             // TODO: 减少对象分配频率
@@ -116,16 +130,6 @@ fun MpChartWithStateFlow(
             lineDataSetList.add(lDataSet)
             lineDataSetList.add(rDataSet)
         }
-    }
-
-    // TODO: 索引展示
-    var leftPeekIndex by remember { mutableIntStateOf(0) }
-    var rightPeekIndex by remember { mutableIntStateOf(0) }
-
-    Row {
-        Text("mL: $leftPeekIndex")
-        Spacer(modifier = Modifier.width(5.dp))
-        Text("mR: $rightPeekIndex")
     }
 
     AndroidView(

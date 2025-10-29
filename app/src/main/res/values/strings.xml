@@ -8,4 +8,5 @@
     <string name="title_activity_client">ClientActivity</string>
     <string name="title_activity_ranging">RangingActivity</string>
     <string name="title_activity_gvr">GvrActivity</string>
+    <string name="title_activity_angle">AngleActivity</string>
 </resources>

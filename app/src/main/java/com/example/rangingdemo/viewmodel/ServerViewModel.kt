@@ -1,6 +1,7 @@
 package com.example.rangingdemo.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,18 +9,10 @@ import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray
 import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
-import com.example.rangingdemo.CmdStartPlay
-import com.example.rangingdemo.CmdStartRecord
 import com.example.rangingdemo.CmdStop
-import com.example.rangingdemo.CmdStopPlay
-import com.example.rangingdemo.CmdStopRecord
 import com.example.rangingdemo.Message
 import com.example.rangingdemo.N
 import com.example.rangingdemo.Param
-import com.example.rangingdemo.activities.leftArrays
-import com.example.rangingdemo.activities.rightArrays
-import com.example.rangingdemo.f_s
-import com.example.rangingdemo.get_distance
 import com.example.rangingdemo.jsonFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -43,16 +36,11 @@ class ServerViewModel : ViewModel() {
 
     val isRunning = mutableStateOf(false)
 
-    private val _receivedMsg = MutableStateFlow("")
-    val receivedMsg: StateFlow<String> = _receivedMsg
-
-    val clientConnections = ConcurrentHashMap<String, ClientConnection>()
+    private val clientConnections = ConcurrentHashMap<String, ClientConnection>()
+    val clientCounter = mutableIntStateOf(0)    // 已连接设备数
 
     // 消息监听
     var onMessageReceived: ((Message) -> Unit)? = null
-
-    private val _receivedMsgList = MutableStateFlow<List<CmdResponseArray>>(emptyList())
-    val receivedMsgList: StateFlow<List<CmdResponseArray>> = _receivedMsgList
 
     fun startServer(port: Int = 8888) = viewModelScope.launch(Dispatchers.IO) {
         isRunning.value = true
@@ -63,11 +51,7 @@ class ServerViewModel : ViewModel() {
                     try {
                         val socket = serverSocket.accept()
                         Log.d("Server", "New client connected: ${socket.inetAddress}")
-                        // 创建客户端连接并存储
-                        val clientId = "client_${System.currentTimeMillis()}"
-                        val clientConnection = ClientConnection(socket, clientId)
-                        clientConnections[clientId] = clientConnection
-                        handleClientMessages(clientConnection)
+                        handleClientSocket(socket)
                     } catch (e: SocketException) {
                         Log.d("Socket", "Socket is closing due to cancellation.")
                     }
@@ -83,17 +67,13 @@ class ServerViewModel : ViewModel() {
         serverSocket = null
     }
 
-    fun allocateParamList(deviceCnt: Int, start_f_c: Int, step: Int): List<Param> {
-        val paramsList = (0 until deviceCnt).map { index ->
-            Param(start_f_c + step * index, 1, 37)
-        }
-        return paramsList
-    }
-
-    fun performRangingJob(start_f_c: Int, step: Int) = viewModelScope.launch(Dispatchers.IO) {
-        val paramsArray = allocateParamList(clientConnections.size, start_f_c, step).toTypedArray()
-
-        _receivedMsgList.value = emptyList()    // 清空消息
+    /**
+     * 测距流程
+     * @param genParamsArray 参数列表回调，根据设备数量为设备分配参数列表，例如f_c
+     */
+    fun performRangingJob(genParamsArray: (deviceCounter: Int) -> Array<Param>) = viewModelScope.launch(Dispatchers.IO) {
+        val paramsArray: Array<Param> = genParamsArray(clientCounter.intValue)
+        assert(paramsArray.size == clientCounter.intValue)
 
         val deferredJobs = clientConnections.entries.withIndex()
             .map { (index, entry) ->
@@ -120,39 +100,33 @@ class ServerViewModel : ViewModel() {
     }
 
     // 处理客户端消息
-    private fun handleClientMessages(clientConnection: ClientConnection) =
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                while (isRunning.value && !clientConnection.socket.isClosed) {
-                    val json = clientConnection.reader.readLine() ?: break
-                    Log.d("handleClientMessages", json)
-                    val msg = jsonFormat.decodeFromString<Message>(json)
-                    withContext(Dispatchers.Main) {
-                        onMessageReceived?.invoke(msg)
-                    }
-                    _onMessageReceived(msg)
+    private fun handleClientSocket(socket: Socket) = viewModelScope.launch(Dispatchers.IO) {
+        // 创建客户端连接并存储
+        val clientId = "client_${System.currentTimeMillis()}"   // FIXME: ms级别可能不唯一，使用ns级别或者其他方法
+        val clientConnection = ClientConnection(socket, clientId)
+        clientConnections[clientConnection.clientId] = clientConnection
+        clientCounter.value += 1
+
+        try {
+            while (isRunning.value && !clientConnection.socket.isClosed) {
+                val json = clientConnection.reader.readLine() ?: break
+                Log.d("handleClientMessages", json)
+                val msg = jsonFormat.decodeFromString<Message>(json)
+                withContext(Dispatchers.Main) {
+                    onMessageReceived?.invoke(msg)
                 }
-            } catch (e: IOException) {
-                // 客户端断开连接
-                e.printStackTrace()
-            } finally {
-                val clientId = clientConnection.clientId
-                clientConnections.remove(clientId)
-                clientConnection.close()
             }
-        }
-
-    private fun _onMessageReceived(msg: Message) {
-        when (msg) {
-            is CmdResponseArray -> {
-                _receivedMsgList.value += msg
-            }
-
-            is CmdPong -> {
-
-            }
+        } catch (e: IOException) {
+            // 客户端断开连接
+            e.printStackTrace()
+        } finally {
+            clientConnections.remove(clientConnection.clientId)
+            clientConnection.close()
+            clientCounter.value -= 1
         }
     }
+
+
 
     fun write(clientId: String, msg: Message) = write(clientId, jsonFormat.encodeToString(msg))
 

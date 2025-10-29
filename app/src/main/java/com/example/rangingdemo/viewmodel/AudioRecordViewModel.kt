@@ -42,12 +42,7 @@ class AudioRecordViewModel : ViewModel() {
 
     // 可动态修改的参数列表
     private val _processingParams = MutableStateFlow(
-        // 默认参数（可初始化为空或默认值）
-        listOf(
-            AudioProcessingParams(ZC_hat_prime, N_prime, 19000),
-            AudioProcessingParams(ZC_hat_prime, N_prime, 20000),
-            AudioProcessingParams(ZC_hat_prime, N_prime, 21000),
-        )
+        listOf<AudioProcessingParams>()
     )
     val processingParams: StateFlow<List<AudioProcessingParams>> = _processingParams
 
@@ -55,9 +50,10 @@ class AudioRecordViewModel : ViewModel() {
     private val _cirList = MutableSharedFlow<List<Pair<FloatArray, FloatArray>>>()
     val cirList: SharedFlow<List<Pair<FloatArray, FloatArray>>> = _cirList
 
-    // 处理后的结果: 峰值下标列表
-    private val _indexList = MutableStateFlow<List<Pair<Int, Int>>>(listOf())
-    val indexList: StateFlow<List<Pair<Int, Int>>> = _indexList
+    // 处理后的结果: 峰值列表(列表每一项对应一个频段的左右声道峰值)
+    private val _indexList =
+        MutableStateFlow<List<Pair<Pair<Int, Float>, Pair<Int, Float>>>>(listOf())
+    val indexList: StateFlow<List<Pair<Pair<Int, Float>, Pair<Int, Float>>>> = _indexList
 
     init {
         audioRecorder.audioDataFlow.onEach { data ->
@@ -79,7 +75,7 @@ class AudioRecordViewModel : ViewModel() {
             val timeSpent = measureNanoTime {
                 result = processInParallel(rawData, params)
             }
-            Log.d("processInParallel", "${ns2ms(timeSpent)}, params=${params.size}")
+            Log.d("processInParallel", "${ns2ms(timeSpent)}ms, params=${params.size}")
             result
         }.onEach { processedData ->
             _cirList.emit(processedData)
@@ -91,7 +87,7 @@ class AudioRecordViewModel : ViewModel() {
                 val leftIndexValue = getMaxIndexedValue(leftCir)
                 val rightIndexValue = getMaxIndexedValue(rightCir)
                 Log.d("indexValue", "L: $leftIndexValue, R: $rightIndexValue")
-                Pair(leftIndexValue.first, rightIndexValue.first)
+                Pair(leftIndexValue, rightIndexValue)
             }
         }.onEach { data ->
             _indexList.emit(data)
@@ -113,9 +109,13 @@ class AudioRecordViewModel : ViewModel() {
     }
 
     fun stop() {
-        viewModelScope.launch {
-            audioRecorder.stopRecording()
-        }
+        audioRecorder.stopRecording()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+
+        stop()
     }
 
     // 设置参数

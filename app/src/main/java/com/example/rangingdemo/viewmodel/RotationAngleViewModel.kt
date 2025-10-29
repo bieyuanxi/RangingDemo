@@ -40,7 +40,7 @@ class RotationAngleViewModel(application: Application): AndroidViewModel(applica
         sensorManager.registerListener(
             rotationSensorManager,
             rotationSensor,
-            SensorManager.SENSOR_DELAY_GAME // 适合游戏和实时应用的延迟
+            SensorManager.SENSOR_DELAY_GAME // 适合游戏和实时应用的延迟: Mate60/Nova13/Xiaomi14: 50Hz
         )
     }
 

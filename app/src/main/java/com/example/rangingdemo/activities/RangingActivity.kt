@@ -1,6 +1,6 @@
 package com.example.rangingdemo.activities
 
-import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -12,24 +12,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -38,49 +38,33 @@ import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray
 import com.example.rangingdemo.CmdResponseArray
 import com.example.rangingdemo.CmdSetParams
-import com.example.rangingdemo.CmdStartPlay
-import com.example.rangingdemo.CmdStartRecord
 import com.example.rangingdemo.CmdStop
-import com.example.rangingdemo.CmdStopPlay
-import com.example.rangingdemo.CmdStopRecord
-import com.example.rangingdemo.Message
-import com.example.rangingdemo.MpChartWithStateFlow
+import com.example.rangingdemo.FlowDataSaver
+import com.example.rangingdemo.ui.components.MpChartWithStateFlow
 import com.example.rangingdemo.N
 import com.example.rangingdemo.N_prime
 import com.example.rangingdemo.Param
 import com.example.rangingdemo.ZC_hat
 import com.example.rangingdemo.ZC_hat_prime
-import com.example.rangingdemo.complex.Complex32Array
+import com.example.rangingdemo.calculateAngle
 import com.example.rangingdemo.consumeComplexArray2StereoFloatArray
 import com.example.rangingdemo.f_s
 import com.example.rangingdemo.get_distance
-import com.example.rangingdemo.jsonFormat
 import com.example.rangingdemo.modulate
 import com.example.rangingdemo.ui.theme.RangingDemoTheme
 import com.example.rangingdemo.viewmodel.AudioProcessingParams
 import com.example.rangingdemo.viewmodel.AudioRecordViewModel
 import com.example.rangingdemo.viewmodel.AudioTrackViewModel
 import com.example.rangingdemo.viewmodel.ClientViewModel
+import com.example.rangingdemo.viewmodel.RotationAngleViewModel
 import com.example.rangingdemo.viewmodel.ServerViewModel
-import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import kotlin.system.measureTimeMillis
-
-// TODO: 应该使用更好的方法
-val leftArrays = Array(10) { i ->
-    intArrayOf()
-}
-val rightArrays = Array(10) { i ->
-    intArrayOf()
-}
+import com.example.rangingdemo.ui.components.RotatePhoneDialog
+import com.example.rangingdemo.getAngleFromFile
+import com.example.rangingdemo.readCsv
+import com.example.rangingdemo.ui.components.DeviceInfo
+import com.example.rangingdemo.ui.components.DeviceMapVisualizer
+import java.io.File
 
 class RangingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,29 +75,6 @@ class RangingActivity : ComponentActivity() {
 
         val audioRecordViewModel: AudioRecordViewModel by viewModels()
         val audioTrackViewModel: AudioTrackViewModel by viewModels()
-
-        val serverViewModel: ServerViewModel by viewModels()
-
-        serverViewModel.onMessageReceived = { msg ->
-            when (msg) {
-                is CmdResponseArray -> {
-                    leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
-                    rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
-                    Log.d(
-                        "CmdResponseArrayLeft",
-                        "fc: ${msg.f_c}, ${msg.array_left.contentToString()}"
-                    )
-                    Log.d(
-                        "CmdResponseArrayRight",
-                        "fc: ${msg.f_c}, ${msg.array_right.contentToString()}"
-                    )
-                }
-
-                is CmdPong -> {
-
-                }
-            }
-        }
 
         val clientViewModel: ClientViewModel by viewModels()
         clientViewModel.onMessageReceived = { msg ->
@@ -139,7 +100,9 @@ class RangingActivity : ComponentActivity() {
                                 N,
                                 f_c.intValue,
                                 f_s
-                            )
+                            ),
+                            leftRate = 10.0f,
+                            rightRate = 10.0f
                         )
                         audioTrackViewModel.start(stereoAudioData, -1)
                     }
@@ -155,10 +118,10 @@ class RangingActivity : ComponentActivity() {
                     val indexList = audioRecordViewModel.indexList.value
                     audioRecordViewModel.stopUpdate = true  // 上传数据时停止更新，保持当前数据状态
                     val arrayL = IntArray(indexList.size) { i ->
-                        indexList[i].first
+                        indexList[i].first.first
                     }
                     val arrayR = IntArray(indexList.size) { i ->
-                        indexList[i].second
+                        indexList[i].second.first
                     }
                     clientViewModel.write(
                         CmdResponseArray(
@@ -191,11 +154,11 @@ class RangingActivity : ComponentActivity() {
                             NewServerUI()
                             HorizontalDivider(thickness = 2.dp)
                         }
-
                         NewClientUI(host)
                         HorizontalDivider(thickness = 2.dp)
                         MpChartWithStateFlow(f_c = f_c.intValue, cirList)
 //                        StateFlow2()
+
                     }
                 }
             }
@@ -209,23 +172,73 @@ private var f_c = mutableIntStateOf(0)
 private val start_f_c = 18000
 private val step = 1000
 
+// TODO: 应该使用更好的方法
+val leftMatrix = Array(10) {
+    intArrayOf()
+}
+val rightMatrix = Array(10) {
+    intArrayOf()
+}
 
 @Composable
 fun NewServerUI() {
     val serverViewModel: ServerViewModel = viewModel()
 
-    val isServerRunning by remember { serverViewModel.isRunning }
+    // 接收到返回数据的客户端设备数量
+    var cmdResponseArrayCount by remember { mutableIntStateOf(0) }
+    serverViewModel.onMessageReceived = { msg ->
+        when (msg) {
+            is CmdResponseArray -> {
+                leftMatrix[(msg.f_c - start_f_c) / step] = msg.array_left
+                rightMatrix[(msg.f_c - start_f_c) / step] = msg.array_right
+                cmdResponseArrayCount += 1
+                Log.d(
+                    "CmdResponseArrayLeft",
+                    "fc: ${msg.f_c}, ${msg.array_left.contentToString()}"
+                )
+                Log.d(
+                    "CmdResponseArrayRight",
+                    "fc: ${msg.f_c}, ${msg.array_right.contentToString()}"
+                )
+            }
 
-    var distance by remember { mutableStateOf(0f) }
+            is CmdPong -> {
+
+            }
+        }
+    }
+
+    val isServerRunning by remember { serverViewModel.isRunning }
+    // 已建立连接的设备数量
+    val clientCounter by remember { serverViewModel.clientCounter }
+
+    val deviceInfos = remember { mutableStateListOf<DeviceInfo>() }
+    var angleOffset by remember { mutableFloatStateOf(0.0f) }
+
+    var distance by remember { mutableFloatStateOf(0f) }
+    if (cmdResponseArrayCount > 1 && cmdResponseArrayCount == clientCounter) {    // 收到全部设备数据时计算
+        distance = get_distance(    // 这里只计算前两个设备的距离
+            m_aa = rightMatrix[0][0],
+            m_ab = rightMatrix[1][0],
+            m_ba = rightMatrix[0][1],
+            m_bb = rightMatrix[1][1],
+            N_prime = N,
+            N = N
+        )
+        if (deviceInfos.isNotEmpty()) {
+            deviceInfos[0].distance = distance  // TODO: 多设备
+        } else {
+            deviceInfos.add(DeviceInfo(distance, angleOffset, "device"))
+        }
+
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Server")
+        Text("Server(client count: ${clientCounter})")
     }
-    val scope = rememberCoroutineScope()
-
 
     Row {
         Button(onClick = {
@@ -235,33 +248,346 @@ fun NewServerUI() {
                 serverViewModel.startServer()
             }
         }) { Text(if (!isServerRunning) "start server" else "stop server") }
-        Spacer(Modifier.padding(10.dp))
+        Spacer(Modifier.padding(2.dp))
         Button(
             onClick = {
-                serverViewModel.performRangingJob(start_f_c, step)
+                cmdResponseArrayCount = 0   // 初始接收到返回数据的客户端设备数量为0
+                serverViewModel.performRangingJob() { count ->
+                    allocateParamList(
+                        deviceCnt = count,
+                        start_f_c,
+                        step
+                    ).toTypedArray()
+                }
             }
-        ) { Text("start ranging") }
-    }
-    val cmdResponseArray by serverViewModel.receivedMsgList.collectAsStateWithLifecycle()
-    if (cmdResponseArray.size > 1) {
-        for (msg in cmdResponseArray) {
-            leftArrays[(msg.f_c - start_f_c) / step] = msg.array_left
-            rightArrays[(msg.f_c - start_f_c) / step] = msg.array_right
-        }
-        distance = get_distance(
-            m_aa = rightArrays[0][0],
-            m_ab = rightArrays[1][0],
-            m_ba = rightArrays[0][1],
-            m_bb = rightArrays[1][1],
-            N_prime = N,
-            N = N
-        )
+        ) { Text("开始测距") }
     }
 
-    Text("Server received: ${serverViewModel.receivedMsg.collectAsState().value}")
     Text("distance: $distance")
+
+    val context = LocalContext.current
+
+    val audioRecordViewModel: AudioRecordViewModel = viewModel()
+    val rotationAngleViewModel: RotationAngleViewModel = viewModel()
+
+    val grVAngle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
+
+    // 状态管理
+    var isRotatePhoneDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
+    var isAngleDialogShowing by remember { mutableStateOf(false) } // 摇一摇
+
+    // 保存数据
+    val flowSaver = remember {
+        FlowDataSaver(rotationAngleViewModel.viewModelScope)
+    }
+
+
+    Row {
+        Button(
+            onClick = {
+                rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
+                isRotatePhoneDialogShowing = true  // 提示旋转手机
+
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
+
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
+
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
+            }
+        ) { Text("测角（发现模式）") }  // 以旋转360度的方式发现周围的设备（通过录制音频）
+
+        Button(onClick = {
+            isAngleDialogShowing = !isAngleDialogShowing
+            if (isAngleDialogShowing) {
+                rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
+
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
+
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
+
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
+            } else {
+                serverViewModel.write2AllClient(CmdStop())
+                audioRecordViewModel.stop()
+
+                flowSaver.close()   // 关闭文件流
+
+                // 调用算法
+                val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+                val (angleRaw, diffRaw) = readCsv(inputFile)
+                val angleOffsetCandidate =
+                    calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
+                angleOffset = angleOffsetCandidate.toFloat()
+                deviceInfos.add(
+                    DeviceInfo(
+                        distance = if (distance > 0) distance else 1e-3f,
+                        angleOffset,
+                        "device"
+                    )
+                )
+            }
+        }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束测角") }
+    }
+
+    Text(
+        "algo: %.1f°, grv: %.1f°, angle = %.1f°".format(
+            angleOffset,
+            grVAngle,
+            angleOffset - grVAngle
+        )
+    )
+
+    DeviceMapVisualizer(
+        deviceInfos = deviceInfos,
+        currentAngle = grVAngle,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+    )
+
+    // 旋转提示弹窗
+    RotatePhoneDialog(
+        isShowing = isRotatePhoneDialogShowing,
+        rotationProgress = if (grVAngle < 0) 360 + grVAngle else grVAngle,
+        onDismiss = {   // 旋转完成
+            serverViewModel.write2AllClient(CmdStop())
+            audioRecordViewModel.stop()
+
+            flowSaver.close()   // 关闭文件流
+
+            // 调用算法
+            val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+            val angleOffsetCandidate = getAngleFromFile(inputFile)
+            // FIXME: IndexOutOfBoundsException: Empty list doesn't contain element at index 0.
+            angleOffset = angleOffsetCandidate[0].toFloat()
+            // 关闭弹窗
+            isRotatePhoneDialogShowing = false
+            deviceInfos.add(DeviceInfo(if (distance > 0) distance else 1e-3f, angleOffset, "device"))
+        }
+    )
+
+
+//    if (isAngleDialogShowing) {
+//        AngleCircularIndicator(angle)
+//    }
 }
 
+
+/**
+ * 测角UI
+ */
+@Composable
+fun AngleUI() {
+    val context = LocalContext.current
+
+    val serverViewModel: ServerViewModel = viewModel()
+    val audioRecordViewModel: AudioRecordViewModel = viewModel()
+    val rotationAngleViewModel: RotationAngleViewModel = viewModel()
+
+    val grVAngle by rotationAngleViewModel.rotationAngle.collectAsStateWithLifecycle(initialValue = 0.0f)
+
+    // 状态管理
+    var isRotatePhoneDialogShowing by remember { mutableStateOf(false) } // 弹窗显示状态
+    var isAngleDialogShowing by remember { mutableStateOf(false) } // 摇一摇
+
+    // 保存数据
+    val flowSaver = remember {
+        FlowDataSaver(rotationAngleViewModel.viewModelScope)
+    }
+
+    val deviceInfos = remember { mutableStateListOf<DeviceInfo>() }
+
+    var angleOffset by remember { mutableFloatStateOf(0.0f) }
+
+    Text("客户端连接后可开始测角工作")
+    Row {
+        Button(
+            onClick = {
+                rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
+                isRotatePhoneDialogShowing = true  // 提示旋转手机
+
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
+
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
+
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
+            }
+        ) { Text("测角（发现模式）") }  // 以旋转360度的方式发现周围的设备（通过录制音频）
+
+        Button(onClick = {
+            isAngleDialogShowing = !isAngleDialogShowing
+            if (isAngleDialogShowing) {
+                rotationAngleViewModel.calibrate()  // 校准为0
+                angleOffset = 0f
+                deviceInfos.clear()
+
+                val paramsArray = allocateParamList(
+                    deviceCnt = 1,
+                    start_f_c,
+                    step
+                ).toTypedArray()
+
+                val params = paramsArray.map { param ->
+                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                }
+
+                audioRecordViewModel.setProcessingParams(params)
+                audioRecordViewModel.start()
+
+                serverViewModel.write2AllClient(
+                    CmdSetParams(
+                        paramsArray[0].f_c, // deviceCnt == 1
+                        N,
+                        paramsArray
+                    )
+                )
+
+                // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
+                val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
+                val outputFile = File(context.filesDir, fileName)
+                flowSaver.init(outputFile)
+                flowSaver.saveFlows(
+                    rotationAngleViewModel.rotationAngle,
+                    audioRecordViewModel.indexList
+                )
+            } else {
+                serverViewModel.write2AllClient(CmdStop())
+                audioRecordViewModel.stop()
+
+                flowSaver.close()   // 关闭文件流
+
+                // 调用算法
+                val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+                val (angleRaw, diffRaw) = readCsv(inputFile)
+                val angleOffsetCandidate =
+                    calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
+                angleOffset = angleOffsetCandidate.toFloat()
+                deviceInfos.add(DeviceInfo(1f, angleOffset, "device"))
+            }
+        }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束") }
+    }
+
+    Text(
+        "algo: %.1f°, grv: %.1f°, angle = %.1f°".format(
+            angleOffset,
+            grVAngle,
+            angleOffset - grVAngle
+        )
+    )
+
+    DeviceMapVisualizer(
+        deviceInfos = deviceInfos,
+        currentAngle = grVAngle,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp)
+    )
+
+    // 旋转提示弹窗
+    RotatePhoneDialog(
+        isShowing = isRotatePhoneDialogShowing,
+        rotationProgress = if (grVAngle < 0) 360 + grVAngle else grVAngle,
+        onDismiss = {   // 旋转完成
+            serverViewModel.write2AllClient(CmdStop())
+            audioRecordViewModel.stop()
+
+            flowSaver.close()   // 关闭文件流
+
+            // 调用算法
+            val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
+            val angleOffsetCandidate = getAngleFromFile(inputFile)
+            // FIXME: IndexOutOfBoundsException: Empty list doesn't contain element at index 0.
+            angleOffset = angleOffsetCandidate[0].toFloat()
+            // 关闭弹窗
+            isRotatePhoneDialogShowing = false
+            deviceInfos.add(DeviceInfo(1f, angleOffset, "device"))
+        }
+    )
+
+
+//    if (isAngleDialogShowing) {
+//        AngleCircularIndicator(angle)
+//    }
+
+}
 
 @Composable
 fun NewClientUI(host: String) {
@@ -275,7 +601,7 @@ fun NewClientUI(host: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Client")
+        Text("Client(fc = $f_c)")
     }
     Button(onClick = {
         if (isClientRunning) {
@@ -284,76 +610,14 @@ fun NewClientUI(host: String) {
             clientViewModel.startClient(host)
         }
     }) { Text(if (!isClientRunning) "start client" else "stop client") }
-    Text("fc = $f_c")
-//    Text("received: ${clientViewModel.receivedMsg.collectAsState().value}")
 }
 
-
-@Composable
-fun MpChart(
-    modifier: Modifier = Modifier,
-    chartData: Pair<LineDataSet, LineDataSet>
-) {
-    var showLeft by remember { mutableStateOf(true) }
-    var showRight by remember { mutableStateOf(true) }
-
-    Row {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("leftChannel")
-            Checkbox(checked = showLeft, onCheckedChange = { showLeft = it })
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("rightChannel")
-            Checkbox(checked = showRight, onCheckedChange = { showRight = it })
-        }
+/**
+ * 默认的参数分配策略
+ */
+fun allocateParamList(deviceCnt: Int, start_f_c: Int, step: Int): List<Param> {
+    val paramsList = (0 until deviceCnt).map { index ->
+        Param(start_f_c + step * index, 1, 37)
     }
-
-    AndroidView(
-        modifier = modifier.fillMaxSize(),
-        factory = { context ->
-            LineChart(context).apply {
-                setupLineChart(this)
-            }
-        },
-        update = { lineChart ->
-            chartData.let { (dataSet1, dataSet2) ->
-                dataSet1.isVisible = showLeft
-                dataSet2.isVisible = showRight
-                lineChart.data = LineData(dataSet1, dataSet2)
-                lineChart.invalidate()
-            }
-
-        }
-    )
-}
-
-
-// 配置 LineChart 样式（坐标轴、网格线等）
-private fun setupLineChart(chart: LineChart) {
-    chart.apply {
-        // 禁用描述文本
-        description.isEnabled = false
-
-        // 配置 X 轴
-        xAxis.apply {
-            position = XAxis.XAxisPosition.BOTTOM // X 轴在底部
-            setDrawGridLines(false) // 禁用 X 轴网格线
-            axisLineColor = Color.GRAY // 轴线颜色
-        }
-
-        // 配置 Y 轴（左侧）
-        axisLeft.apply {
-            setDrawGridLines(true)
-            gridColor = Color.LTGRAY // 网格线颜色
-            axisLineColor = Color.GRAY
-        }
-
-        // 禁用右侧 Y 轴
-        axisRight.isEnabled = false
-
-        // 启用触摸和缩放
-        setTouchEnabled(true)
-        isDragEnabled = true // 可拖动
-        setScaleEnabled(true) // 可缩放
-    }
+    return paramsList
 }

@@ -203,9 +203,9 @@ class WifiDirectActivity : ComponentActivity() {
 @Composable
 fun WifiDirectInfo(viewModel: WifiDirectViewModel, modifier: Modifier = Modifier) {
     Text("isWifiP2pEnabled: ${viewModel.isWifiP2pEnabled.value}")
-    Text("isGroupFormed: ${viewModel.wifiP2pInfo.value?.groupFormed}")
-    Text("isGroupOwner: ${viewModel.wifiP2pInfo.value?.isGroupOwner}")
-    Text("GOAddress: : ${viewModel.wifiP2pInfo.value?.groupOwnerAddress}")
+    Text("isGroupFormed: ${viewModel.wifiP2pInfo.value.groupFormed}")
+    Text("isGroupOwner: ${viewModel.wifiP2pInfo.value.isGroupOwner}")
+    Text("GOAddress: : ${viewModel.wifiP2pInfo.value.groupOwnerAddress}")
 }
 
 @Composable
@@ -241,8 +241,10 @@ private fun Jump2RangingActivity() {
     val info by wifiDirectViewModel.wifiP2pInfo
     var host by remember { mutableStateOf("") }
 
-    if (info.groupFormed) {
-        host = info.groupOwnerAddress?.hostAddress?: ""
+    host = if (info.groupFormed) {
+        info.groupOwnerAddress?.hostAddress?: ""
+    } else {
+        ""
     }
 
     Button(

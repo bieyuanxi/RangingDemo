@@ -24,31 +24,34 @@ class StaticAudioPlayer : CoroutineScope {
     // FIXME: 竞态条件：多次调用此方法会创建多个协程，可能会重复实例化audioTrack或意外释放已实例化的audioTrack
     // FIXME: 维护一个播放状态，对其加锁，避免重复创建、停止
     // stereoAudioData: 立体声，双声道
-    fun startPlay(stereoAudioData: FloatArray, loopCount: Int = 0) = launch {
-        val timeTaken = measureTimeMillis {
-            stop()  // 停止可能存在的播放资源
-
+    fun startPlay(stereoAudioData: FloatArray, loopCount: Int = 0) {
+        stop()  // 停止可能存在的播放资源
+        val createTimeTaken = measureTimeMillis {
             audioTrack = createFloatStereoAudioTrack(sampleRate = 48000)
-            audioTrack?.let {
-                assert(
-                    stereoAudioData.size ==
-                            it.write(
-                                stereoAudioData,
-                                0,
-                                stereoAudioData.size,
-                                AudioTrack.WRITE_BLOCKING
-                            )
-                )
-
-                val totalFrames = stereoAudioData.size / it.channelCount
-                val result = it.setLoopPoints(0, totalFrames, loopCount)
-                assert(result == AudioTrack.SUCCESS)
-                it.play()
-            }
-
-            // TODO: 创建协程跟踪audioTrack播放状态，在播放完毕后释放audioTrack
         }
-        Log.d("startPlaytimeTaken", "startPlay() takes $timeTaken ms")
+        Log.d("createAudioTrack", "createFloatStereoAudioTrack() takes $createTimeTaken ms")
+        launch {
+            val timeTaken = measureTimeMillis {
+                audioTrack?.apply {
+                    assert(
+                        stereoAudioData.size ==
+                                write(
+                                    stereoAudioData,
+                                    0,
+                                    stereoAudioData.size,
+                                    AudioTrack.WRITE_BLOCKING
+                                )
+                    )
+                    val totalFrames = stereoAudioData.size / channelCount
+                    val result = setLoopPoints(0, totalFrames, loopCount)
+                    assert(result == AudioTrack.SUCCESS)
+                    play()
+                }
+
+                // TODO: 创建协程跟踪audioTrack播放状态，在播放完毕后释放audioTrack
+            }
+            Log.d("startPlaytimeTaken", "startPlay() takes $timeTaken ms")
+        }
     }
 
     fun stop() {
@@ -97,7 +100,7 @@ private fun createFloatStereoAudioTrack(sampleRate: Int): AudioTrack {
         .apply {
             if (state == AudioTrack.STATE_UNINITIALIZED) {
                 release()
-                throw IllegalStateException("音频播放器初始化失败, code: ${state}")
+                throw IllegalStateException("音频播放器初始化失败, code: $state")
             }
 //            Log.d("AudioTrackBuilder", "$state")
         }

@@ -2,6 +2,12 @@ package com.example.rangingdemo
 
 import com.example.rangingdemo.complex.Complex32Array
 import com.example.rangingdemo.lib.RustFFTWrapper
+import kotlin.math.atan
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Frequency domain rearrange by half
@@ -96,4 +102,46 @@ fun get_distance(
         }
     }
     return -1.0f
+}
+
+/**
+ * @param m 第1次测距长度，单位：m
+ * @param n 第2次测距长度，单位：m
+ * @param radians 旋转弧度
+ * @param lenOfPhone 手机长度（若按中心旋转则为手机长度的一半），单位：m
+ * @return 外部设备相对于手机第一次测距时的弧度
+ */
+fun getRadians(m: Double, n: Double, radians: Double, lenOfPhone: Double = 0.08): Double {
+    // A(x, y)
+    // (0, r) + CA = (x, y) => CA = (x, y - r)
+    // (r*sinφ, r*cosφ) + DA = (x, y)   => DA = (x - r*sinφ, y - r*cosφ)
+    // |CA|^2 = x^2 + (y - r)^2 = m^2                   => x^2 + y^2 = m^2 + 2yr - r^2                  @1
+    // |DA|^2 = (x - r*sinφ)^2 + (y - r*cosφ)^2 = n^2   => x^2 + y^2 = n^2 + 2yr*cosφ + 2xr*sinφ - r^2  @2
+    // @2 - @1 = 2yr*cosφ + 2xr*sinφ - 2yr + n^2 - m^2 = 0    => 2yr(1 - cosφ) - 2xr*sinφ = n^2 - m^2   (φ != 0)
+
+    // x = y(1-cosφ)/sinφ + (m^2 - n^2)/(2r*sinφ)
+    // y = xsinφ / (1 - cosφ) + (n^2 - m^2) / (2r(1 - cosφ))
+    // x^2 = y^2*(1-cosφ)^2/(sinφ^2) + 2y(1-cosφ)(m^2 - n^2)/sinφ/(2r*sinφ) + (m^2 - n^2)^2/(2r*sinφ)^2
+    //     = y^2*(1-cosφ)^2/(sinφ^2) + y(1-cosφ)(m^2 - n^2)/(rsinφ^2) + (m^2 - n^2)^2/(2r*sinφ)^2
+    // @1: x^2 + y^2 - 2yr + r^2 - m^2 = 0
+    // y^2*((1-cosφ)^2/(sinφ^2) + 1) + y((1-cosφ)(m^2 - n^2)/(rsinφ^2) - 2r) + (m^2 - n^2)^2/(2r*sinφ)^2 + r^2 - m^2 = 0
+    val cosPhi = cos(radians)
+    val sinPhi = sin(radians)
+    val a = (1 - cosPhi).pow(2)/sinPhi.pow(2) + 1.0
+    val b = (1 - cosPhi)*(m.pow(2) - n.pow(2))/(lenOfPhone*(sinPhi.pow(2))) - 2*lenOfPhone
+    val c = (m.pow(2) - n.pow(2)).pow(2)/(2*lenOfPhone*sinPhi).pow(2) + lenOfPhone.pow(2) - m.pow(2)
+    val delta = b.pow(2) - 4 * a * c
+    if (delta < 0) {
+        return 0.0
+    }
+    val y1 = (-b + sqrt(delta))/(2*a)
+    val y2 = (-b - sqrt(delta))/(2*a)
+    val x1 = y1 * (1 - cosPhi) / sinPhi + (m.pow(2) - n.pow(2))/(2*lenOfPhone*sinPhi)
+    val x2 = y2 * (1 - cosPhi) / sinPhi + (m.pow(2) - n.pow(2))/(2*lenOfPhone*sinPhi)
+    println(Pair(x1, y1))
+    println(Pair(x2, y2))
+    if(y1 < lenOfPhone || y1 > m + lenOfPhone) {
+        return atan2(x2, y2)
+    }
+    return atan2(x1, y1)
 }
