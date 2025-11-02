@@ -123,3 +123,10 @@ fun shiftLeft(x: FloatArray, shift: Int): FloatArray {
 
     return newArray
 }
+
+
+fun squareMatrix(n: Int): Array<Array<Int>> {
+    return Array(n) {
+        Array(n) { 0 }
+    }
+}

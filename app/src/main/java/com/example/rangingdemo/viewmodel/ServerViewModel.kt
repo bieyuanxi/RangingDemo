@@ -7,12 +7,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rangingdemo.CmdPong
 import com.example.rangingdemo.CmdRequestArray
+import com.example.rangingdemo.CmdRequestArrayV2
 import com.example.rangingdemo.CmdResponseArray
-import com.example.rangingdemo.CmdSetParams
+import com.example.rangingdemo.CmdSetParamsV2
 import com.example.rangingdemo.CmdStop
 import com.example.rangingdemo.Message
 import com.example.rangingdemo.N
 import com.example.rangingdemo.Param
+import com.example.rangingdemo.ParamV2
 import com.example.rangingdemo.jsonFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -71,19 +73,18 @@ class ServerViewModel : ViewModel() {
      * 测距流程
      * @param genParamsArray 参数列表回调，根据设备数量为设备分配参数列表，例如f_c
      */
-    fun performRangingJob(genParamsArray: (deviceCounter: Int) -> Array<Param>) = viewModelScope.launch(Dispatchers.IO) {
-        val paramsArray: Array<Param> = genParamsArray(clientCounter.intValue)
+    fun performRangingJob(genParamsArray: (deviceCounter: Int) -> Array<ParamV2>) = viewModelScope.launch(Dispatchers.IO) {
+        val paramsArray: Array<ParamV2> = genParamsArray(clientCounter.intValue)
         assert(paramsArray.size == clientCounter.intValue)
 
-        val deferredJobs = clientConnections.entries.withIndex()
+        val deferredJobs = clientConnections.entries.withIndex()    // index may be unstable
             .map { (index, entry) ->
                 // 用async启动并行协程
                 async(Dispatchers.IO) {
                     write(
                         entry.key,
-                        CmdSetParams(
-                            paramsArray[index].f_c,
-                            N,
+                        CmdSetParamsV2(
+                            index,      // TODO: device index may change if count changes
                             paramsArray
                         )
                     )
@@ -94,7 +95,7 @@ class ServerViewModel : ViewModel() {
 
         delay(700)
 
-        write2AllClient(CmdRequestArray())
+        write2AllClient(CmdRequestArrayV2())
         delay(200)
         write2AllClient(CmdStop())
     }
