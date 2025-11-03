@@ -121,7 +121,7 @@ class RangingActivity : ComponentActivity() {
                 is CmdSetParamsV2 -> {
                     f_c.intValue = msg.params[msg.index].f_c
 
-                    squareMatrixViewModel.index = msg.index
+                    squareMatrixViewModel.index.intValue = msg.index
                     squareMatrixViewModel.leftSquareMatrix = squareMatrix(msg.params.size)
                     squareMatrixViewModel.rightSquareMatrix = squareMatrix(msg.params.size)
 
@@ -182,7 +182,7 @@ class RangingActivity : ComponentActivity() {
                     }
                     clientViewModel.write(
                         CmdResponseArrayV2(
-                            squareMatrixViewModel.index,
+                            squareMatrixViewModel.index.intValue,
                             arrayL,
                             arrayR
                         )
@@ -195,7 +195,9 @@ class RangingActivity : ComponentActivity() {
 
                     val matrix = squareMatrixViewModel.rightSquareMatrix
                     val size = matrix.size
-                    val index = squareMatrixViewModel.index
+                    val index = squareMatrixViewModel.index.intValue
+
+                    val array = Array(size) { 0f }
                     for (i in 0 until size) {
                         if (i != index) {
                             val distance = get_distance(
@@ -206,10 +208,11 @@ class RangingActivity : ComponentActivity() {
                                 N_prime = N,
                                 N = N
                             )
+                            array[i] = distance
                             Log.d("distance", "$i -> $index: $distance")
                         }
                     }
-
+                    squareMatrixViewModel.distances.value = array
                 }
 
             }
@@ -546,13 +549,16 @@ fun NewClientUI(host: String) {
 
     val isClientRunning by remember { clientViewModel.isRunning }
 
+    val distances by remember { squareMatrixViewModel.distances }
+    val index by remember { squareMatrixViewModel.index }
+
     val f_c by remember { f_c }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Client(fc = $f_c, index = ${squareMatrixViewModel.index})")
+        Text("Client(fc = $f_c, index = $index)")
     }
     Button(onClick = {
         if (isClientRunning) {
@@ -561,6 +567,13 @@ fun NewClientUI(host: String) {
             clientViewModel.startClient(host)
         }
     }) { Text(if (!isClientRunning) "start client" else "stop client") }
+    Column {
+        for (i in 0 until distances.size) {
+            if(i != index) {
+                Text("$i -> $index: ${distances[i]}")
+            }
+        }
+    }
 }
 
 /**
