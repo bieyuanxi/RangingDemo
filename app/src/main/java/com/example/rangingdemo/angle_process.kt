@@ -34,6 +34,36 @@ fun readCsv(file: File): Pair<List<Double>, List<Double>> {
     return angleList to diffList
 }
 
+
+/**
+ * 读取CSV文件，提取"angle"和"diff"列数据
+ * @param csvPath CSV文件路径
+ * @return List<Pair(angle列表, diff列表)>
+ */
+fun readCsvByIndex(file: File): List<Pair<List<Double>, List<Double>>> {
+    val map = HashMap<Int, Pair<MutableList<Double>, MutableList<Double>>>()
+
+    FileReader(file).use { reader ->
+        // 解析CSV（首行为表头，匹配"angle"和"diff"列）
+        CSVParser.parse(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader()).use { parser ->
+            for (record in parser) {
+                val index = record.get("index").toIntOrNull() ?: continue
+                val angle = record.get("angle").toDoubleOrNull() ?: continue
+                val diff = record.get("diff").toDoubleOrNull() ?: continue
+                if (!map.contains(index)) {
+                    map.put(index, Pair(mutableListOf(), mutableListOf()))
+                }
+                map.get(index)?.let { (angleList, diffList) ->
+                    angleList.add(angle)
+                    diffList.add(diff)
+                }
+            }
+        }
+    }
+
+    return map.toList().sortedBy { it.first }.map { it.second }
+}
+
 /**
  * 角度解缠绕（处理360度跳变，类似numpy.unwrap）
  * @param angles 原始角度（度）
