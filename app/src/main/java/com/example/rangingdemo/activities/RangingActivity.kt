@@ -331,24 +331,6 @@ fun NewServerUI() {
     val deviceInfos = remember { mutableStateListOf<DeviceInfo>() }
     var angleOffset by remember { mutableFloatStateOf(0.0f) }
 
-    var distance by remember { mutableFloatStateOf(0f) }
-    if (cmdResponseArrayCount > 1 && cmdResponseArrayCount == clientCounter) {    // 收到全部设备数据时计算
-        distance = get_distance(    // 这里只计算前两个设备的距离
-            m_aa = rightSquareMatrix[0][0],
-            m_ab = rightSquareMatrix[1][0],
-            m_ba = rightSquareMatrix[0][1],
-            m_bb = rightSquareMatrix[1][1],
-            N_prime = N,
-            N = N
-        )
-        if (deviceInfos.isNotEmpty()) {
-            deviceInfos[0].distance = distance  // TODO: 多设备
-        } else {
-            deviceInfos.add(DeviceInfo(distance, angleOffset, "device"))
-        }
-
-    }
-
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -381,8 +363,6 @@ fun NewServerUI() {
             }
         ) { Text("开始测距v2") }
     }
-
-    Text("distance: $distance")
 
     val context = LocalContext.current
 
@@ -482,7 +462,7 @@ fun NewServerUI() {
                         angleOffset = angleOffsetCandidate.toFloat()
                         deviceInfos.add(
                             DeviceInfo(
-                                distance = if (distance > 0) distance else 1e-3f,
+                                distance = 1e-3f, // FIXME
                                 angleOffset,
                                 "$i"
                             )
@@ -528,7 +508,7 @@ fun NewServerUI() {
             isRotatePhoneDialogShowing = false
             deviceInfos.add(
                 DeviceInfo(
-                    if (distance > 0) distance else 1e-3f,
+                    1e-3f,  // FIXME
                     angleOffset,
                     "device"
                 )
