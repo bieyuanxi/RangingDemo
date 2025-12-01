@@ -13,6 +13,7 @@ import com.example.rangingdemo.f_s
 import com.example.rangingdemo.floatArray2ComplexArray
 import com.example.rangingdemo.getMaxIndexedValue
 import com.example.rangingdemo.magnitude
+import com.example.rangingdemo.normalizeAudioHighPerformance
 import com.example.rangingdemo.ns2ms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -57,6 +58,8 @@ class AudioRecordViewModel : ViewModel() {
 
     init {
         audioRecorder.audioDataFlow.onEach { data ->
+            normalizeAudioHighPerformance(data) // 归一化
+
             val (leftChannel, rightChannel) = splitStereoChannels(data)
             _audioChannel.emit(leftChannel to rightChannel)
         }.flowOn(Dispatchers.Default).launchIn(viewModelScope)

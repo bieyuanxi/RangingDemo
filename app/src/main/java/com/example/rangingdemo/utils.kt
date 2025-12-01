@@ -130,3 +130,38 @@ fun squareMatrix(n: Int): Array<Array<Int>> {
         Array(n) { 0 }
     }
 }
+
+
+
+/**
+ * 音频归一化
+ *
+ * 循环 + 单遍遍历计算最大值 + 直接修改原数组
+ */
+fun normalizeAudioHighPerformance(audioData: FloatArray) {
+    val length = audioData.size
+    if (length == 0) return
+
+    // 计算绝对值最大值
+    var maxAbs = 0f
+    for (i in 0 until length) {
+        val absVal = kotlin.math.abs(audioData[i])
+        if (absVal > maxAbs) {
+            maxAbs = absVal
+        }
+    }
+
+    // 静音判断（低于阈值直接置0）
+    if (maxAbs < 1e-6f) {
+        for (i in 0 until length) {
+            audioData[i] = 0f
+        }
+        return
+    }
+
+    // 归一化到 [-1, 1]
+    val scale = 1f / maxAbs
+    for (i in 0 until length) {
+        audioData[i] *= scale
+    }
+}
