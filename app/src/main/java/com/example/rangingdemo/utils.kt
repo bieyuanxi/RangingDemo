@@ -44,20 +44,13 @@ fun generateSimpleStereoAudio(
  * 消耗Complex32Array，并将复数数组转成双声道音频数组
  * 复用内部数组,拷贝实数部分（左声道）到右声道
  * @param array 左声道复数数组，将被消耗，无法再使用
- * @param leftRate 左声道倍率
- * @param rightRate 右声道倍率
+ * @param scale 归一化倍率
  */
-fun consumeComplexArray2StereoFloatArray(array: Complex32Array, leftRate: Float = 1.0f, rightRate: Float = 1.0f): FloatArray {
+fun consumeComplexArray2StereoFloatArray(array: Complex32Array, scale: Float = 0.7f): FloatArray {
     val stereoAudioData = array.inner
     array.clear()
 
-    for (i in stereoAudioData.indices.step(2)) {
-        stereoAudioData[i + 1] = stereoAudioData[i]
-
-        stereoAudioData[i] = leftRate * stereoAudioData[i]
-        stereoAudioData[i + 1] = rightRate * stereoAudioData[i + 1]
-    }
-    Log.d("stereoAudioData", "${getMaxIndexedValue(stereoAudioData)}")
+    normalizeAudioHighPerformance(stereoAudioData, scale)
     return stereoAudioData
 }
 
@@ -134,11 +127,11 @@ fun squareMatrix(n: Int): Array<Array<Int>> {
 
 
 /**
- * 音频归一化
+ * 音频归一化到[-scale, scale]
  *
  * 循环 + 单遍遍历计算最大值 + 直接修改原数组
  */
-fun normalizeAudioHighPerformance(audioData: FloatArray) {
+fun normalizeAudioHighPerformance(audioData: FloatArray, scale: Float = 1.0f) {
     val length = audioData.size
     if (length == 0) return
 
@@ -159,9 +152,9 @@ fun normalizeAudioHighPerformance(audioData: FloatArray) {
         return
     }
 
-    // 归一化到 [-1, 1]
-    val scale = 1f / maxAbs
+    // 归一化到 [-scale, scale]
+    val scale1 = scale / maxAbs
     for (i in 0 until length) {
-        audioData[i] *= scale
+        audioData[i] *= scale1
     }
 }

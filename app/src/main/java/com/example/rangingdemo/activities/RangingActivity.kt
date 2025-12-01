@@ -104,14 +104,12 @@ class RangingActivity : ComponentActivity() {
 
                     val timeTaken1 = measureTimeMillis {
                         val stereoAudioData: FloatArray = consumeComplexArray2StereoFloatArray(
-                            modulate(   // TODO: normalization
+                            modulate(
                                 ZC_hat,
                                 N,
                                 f_c.intValue,
                                 f_s
-                            ),
-                            leftRate = 10.0f,
-                            rightRate = 10.0f
+                            )
                         )
                         audioTrackViewModel.start(stereoAudioData, -1)
                     }
@@ -134,14 +132,12 @@ class RangingActivity : ComponentActivity() {
 
                     val timeTaken1 = measureTimeMillis {
                         val stereoAudioData: FloatArray = consumeComplexArray2StereoFloatArray(
-                            modulate(   // TODO: normalization
+                            modulate(
                                 ZC_hat,
                                 N,
                                 f_c.intValue,
                                 f_s
-                            ),
-                            leftRate = 10.0f,
-                            rightRate = 10.0f
+                            )
                         )
                         audioTrackViewModel.start(stereoAudioData, -1)
                     }

@@ -56,7 +56,7 @@ class AudioActivity : ComponentActivity() {
         val audioTrackViewModel: AudioTrackViewModel by viewModels()
         val audioRecordViewModel: AudioRecordViewModel by viewModels()
 
-        val stereoAudioData = consumeComplexArray2StereoFloatArray(modulate(ZC_hat, N, f_c, f_s), leftRate = 10.0f, rightRate = 10.0f)
+        val stereoAudioData = consumeComplexArray2StereoFloatArray(modulate(ZC_hat, N, f_c, f_s))
 
         audioRecordViewModel.setProcessingParams(listOf(AudioProcessingParams(ZC_hat_prime, N_prime, f_c)))
 
