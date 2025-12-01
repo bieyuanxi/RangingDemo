@@ -47,8 +47,7 @@ fun generateSimpleStereoAudio(
  * @param scale 归一化倍率
  */
 fun consumeComplexArray2StereoFloatArray(array: Complex32Array, scale: Float = 0.7f): FloatArray {
-    val stereoAudioData = array.inner
-    array.clear()
+    val stereoAudioData = array.take()
 
     normalizeAudioHighPerformance(stereoAudioData, scale)
     return stereoAudioData

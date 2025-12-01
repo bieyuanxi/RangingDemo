@@ -60,9 +60,16 @@ class Complex32Array(var size: Int) {
         return result
     }
 
+    @Deprecated("use take() instead")
     fun clear() {
         inner = FloatArray(0)
         size = 0
+    }
+
+    fun take(): FloatArray {
+        val array = inner
+        clear()
+        return array
     }
 }
 
