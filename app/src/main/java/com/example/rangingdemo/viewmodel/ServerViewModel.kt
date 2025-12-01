@@ -100,6 +100,39 @@ class ServerViewModel : ViewModel() {
         write2AllClient(CmdStop())
     }
 
+    /**
+     *
+     * @param genParamsArray 参数列表回调，根据设备数量为设备分配参数列表，例如f_c
+     */
+    fun performAngleJobStart(genParamsArray: (deviceCounter: Int) -> Array<ParamV2>) = viewModelScope.launch(Dispatchers.IO) {
+        val paramsArray: Array<ParamV2> = genParamsArray(clientCounter.intValue)
+        assert(paramsArray.size == clientCounter.intValue)
+
+        val deferredJobs = clientConnections.entries.withIndex()    // index may be unstable
+            .map { (index, entry) ->
+                // 用async启动并行协程
+                async(Dispatchers.IO) {
+                    write(
+                        entry.key,
+                        CmdSetParamsV2(
+                            index,      // TODO: device index may change if count changes
+                            paramsArray
+                        )
+                    )
+                }
+            }
+        // 等待所有并行任务完成
+        deferredJobs.awaitAll()
+    }
+
+    /**
+     *
+     * @param genParamsArray 参数列表回调，根据设备数量为设备分配参数列表，例如f_c
+     */
+    fun performAngleJobStop() = viewModelScope.launch(Dispatchers.IO) {
+        write2AllClient(CmdStop())
+    }
+
     // 处理客户端消息
     private fun handleClientSocket(socket: Socket) = viewModelScope.launch(Dispatchers.IO) {
         // 创建客户端连接并存储
@@ -143,6 +176,10 @@ class ServerViewModel : ViewModel() {
         clientConnections.forEach { (id, cli) ->
             write(id, msg)
         }
+    }
+
+    fun getClientConnections(): ConcurrentHashMap<String, ClientConnection> {
+        return this.clientConnections
     }
 
     override fun onCleared() {

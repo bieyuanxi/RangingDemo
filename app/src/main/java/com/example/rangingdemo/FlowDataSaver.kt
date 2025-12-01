@@ -19,11 +19,22 @@ import java.util.*
 // 封装单个流的数据（包含标识符、时间戳和值）
 data class FlowData(
     val timestamp: Long, // 时间戳（毫秒）
+    val index: Int,
     val angle: Float,
     val cirLeft: Float,
     val cirRight: Float,
-    val diff: Float
-)
+    val diff: Float,
+) {
+    fun toCsvRow(): String {
+        return "${timestamp},${index},${angle},${cirLeft},${cirRight},${diff}\n"
+    }
+
+    companion object {
+        fun toCsvHeader(): String {
+            return "timestamp,index,angle,cir_left,cir_right,diff\n"
+        }
+    }
+}
 
 class FlowDataSaver(private val scope: CoroutineScope) {
     // 用于写入文件的Writer（确保线程安全）
@@ -44,13 +55,19 @@ class FlowDataSaver(private val scope: CoroutineScope) {
             // 若文件已存在，追加模式；否则创建新文件
             fileWriter = FileWriter(outputFile, true)
             fileName = outputFile.name
-            // 写入表头（CSV格式）
-            fileWriter?.write("timestamp,angle,cir_left,cir_right,diff\n")
+            writeHeader(FlowData.toCsvHeader())
         } catch (e: IOException) {
             e.printStackTrace()
             fileWriter = null
         }
     }
+
+    // 写入表头（CSV格式）
+    fun writeHeader(header: String) {
+        fileWriter?.write(header)
+        fileWriter?.flush()
+    }
+
 
     /**
      * 合并多个流并保存到文件
@@ -68,16 +85,23 @@ class FlowDataSaver(private val scope: CoroutineScope) {
         val combinedFlow = indexFlow.filter {
             it.isNotEmpty()
         }.combine(angleFlow) { indexList, angle ->
-            val index = indexList[0]    // TODO: 取不同的流
-            val left = index.first
-            val right = index.second
-            FlowData(
-                timestamp = System.currentTimeMillis(),
-                angle = angle,
-                cirLeft = left.second,
-                cirRight = right.second,
-                diff = left.second - right.second,
-            )
+            val flow = mutableListOf<FlowData>()
+
+            for (i in 0 until indexList.size) {
+                val pairCir = indexList[i]
+                val leftPair = pairCir.first
+                val rightPair = pairCir.second
+
+                flow.add(FlowData(
+                    timestamp = System.currentTimeMillis(),
+                    index = i,
+                    angle = angle,
+                    cirLeft = leftPair.second,
+                    cirRight = rightPair.second,
+                    diff = leftPair.second - rightPair.second,
+                ))
+            }
+            flow.toList()
         }
 
         // 收集合并后的流，写入文件
@@ -88,15 +112,15 @@ class FlowDataSaver(private val scope: CoroutineScope) {
 
 
     /**
-     * 将单条FlowData写入文件（CSV格式）
+     * 将FlowData写入文件（CSV格式）
      */
-    private suspend fun writeToFile(data: FlowData) = withContext(Dispatchers.IO) {
+    private suspend fun writeToFile(list: List<FlowData>) = withContext(Dispatchers.IO) {
         try {
-            val formattedTime = dateFormat.format(Date(data.timestamp))
-            // 拼接CSV行（处理特殊字符，如逗号）
-            val line = "${data.timestamp},${data.angle},${data.cirLeft},${data.cirRight},${data.diff}\n"
-            Log.d("fileWriter", line)
-            fileWriter?.write(line)
+            for (data in list) {
+                val line = data.toCsvRow()
+                Log.d("fileWriter", line)
+                fileWriter?.write(line)
+            }
             fileWriter?.flush() // 实时刷新到文件（可根据性能需求调整）
         } catch (e: IOException) {
             e.printStackTrace()

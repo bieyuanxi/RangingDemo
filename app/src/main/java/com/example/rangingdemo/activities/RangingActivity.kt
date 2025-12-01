@@ -67,6 +67,7 @@ import kotlin.system.measureTimeMillis
 import com.example.rangingdemo.ui.components.RotatePhoneDialog
 import com.example.rangingdemo.getAngleFromFile
 import com.example.rangingdemo.readCsv
+import com.example.rangingdemo.readCsvByIndex
 import com.example.rangingdemo.squareMatrix
 import com.example.rangingdemo.ui.components.DeviceInfo
 import com.example.rangingdemo.ui.components.DeviceMapVisualizer
@@ -399,6 +400,9 @@ fun NewServerUI() {
         FlowDataSaver(rotationAngleViewModel.viewModelScope)
     }
 
+    val squareMatrixViewModel: SquareMatrixViewModel = viewModel()
+
+    val thisPhoneClientIndex by remember { squareMatrixViewModel.index }
 
     Row {
         Button(
@@ -409,7 +413,7 @@ fun NewServerUI() {
                 isRotatePhoneDialogShowing = true  // 提示旋转手机
 
                 val paramsArray = allocateParamList(
-                    deviceCnt = 1,
+                    deviceCnt = clientCounter,
                     start_f_c,
                     step
                 ).toTypedArray()
@@ -446,25 +450,13 @@ fun NewServerUI() {
                 angleOffset = 0f
                 deviceInfos.clear()
 
-                val paramsArray = allocateParamList(
-                    deviceCnt = 1,
-                    start_f_c,
-                    step
-                ).toTypedArray()
-
-                val params = paramsArray.map { param ->
-                    AudioProcessingParams(ZC_hat_prime, N_prime, param.f_c)
+                serverViewModel.performAngleJobStart { count ->
+                    allocateParamList(
+                        deviceCnt = count,
+                        start_f_c,
+                        step
+                    ).toTypedArray()
                 }
-
-                audioRecordViewModel.setProcessingParams(params)
-                audioRecordViewModel.start()
-
-                serverViewModel.write2AllClient(
-                    CmdSetParamsV2(
-                        0, // deviceCnt == 1
-                        paramsArray
-                    )
-                )
 
                 // 记录旋转角和音频数据   // TODO: 考虑添加延迟，因为录音和播放音频以及网络延迟
                 val fileName = "${Build.MODEL}_angle_audio_${System.currentTimeMillis()}.csv"
@@ -476,23 +468,27 @@ fun NewServerUI() {
                 )
             } else {
                 serverViewModel.write2AllClient(CmdStop())
-                audioRecordViewModel.stop()
 
                 flowSaver.close()   // 关闭文件流
 
                 // 调用算法
                 val inputFile = File(context.filesDir, flowSaver.fileName ?: "NotExistFile")
-                val (angleRaw, diffRaw) = readCsv(inputFile)
-                val angleOffsetCandidate =
-                    calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
-                angleOffset = angleOffsetCandidate.toFloat()
-                deviceInfos.add(
-                    DeviceInfo(
-                        distance = if (distance > 0) distance else 1e-3f,
-                        angleOffset,
-                        "device"
-                    )
-                )
+                val list = readCsvByIndex(inputFile)
+
+                list.forEachIndexed { i, (angleRaw, diffRaw) ->
+                    if (i != thisPhoneClientIndex) {    // ignore this phone
+                        val angleOffsetCandidate =
+                            calculateAngle(angleRaw.toDoubleArray(), diffRaw.toDoubleArray())
+                        angleOffset = angleOffsetCandidate.toFloat()
+                        deviceInfos.add(
+                            DeviceInfo(
+                                distance = if (distance > 0) distance else 1e-3f,
+                                angleOffset,
+                                "$i"
+                            )
+                        )
+                    }
+                }
             }
         }) { Text(if (!isAngleDialogShowing) "测角（摇一摇）" else "结束测角") }
     }
