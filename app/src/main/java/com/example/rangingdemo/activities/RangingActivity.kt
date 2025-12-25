@@ -3,6 +3,7 @@ package com.example.rangingdemo.activities
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -79,6 +80,9 @@ import java.io.File
 class RangingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 屏幕常亮
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val host = intent.getStringExtra("host") ?: ""
         val isGroupOwner = intent.getBooleanExtra("is_group_owner", false)
